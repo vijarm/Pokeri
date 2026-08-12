@@ -29,3 +29,6 @@ class Pelaaja:
     def nollaaPanos(self):
         self.maksettuPanostukseen = 0
         self.valinta = 0
+
+    def tulostaKasi(self):
+        print(f"Pelaaja {self.nimi}, käsikortit: {self.kasikortit}")

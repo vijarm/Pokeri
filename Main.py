@@ -29,7 +29,7 @@ for i in range(4):
 
 MyGame = Pelipoyta(testilista)
 
-MyGame.testiPeli()
+MyGame.autoPeli()  #pelaa tietokoneilla pelin kaikki kädet alusta loppuun
 
 testilista = []
 for i in range(4):
@@ -37,11 +37,20 @@ for i in range(4):
     tyyppi = "Tietsikka"
     testilista.append(Pelaaja(nimi, tyyppi))
 
+testilista[3].chips = 200
+
+ManualGame = Pelipoyta(testilista)
+# ManualGame.uusiKierros()  #Menee normimoodin mukaan yksi kierros, kaikki manual
+ManualGame.testiPeli()
+
+'''Testijako
 MyJako = Jako(PerusPakka, testilista, 0, 0)
 MyJako.jaaKortit()
 MyJako.kerroKortit()
+MyJako.pelaajat[1].chips = 300
+MyJako.pelaajat[2].chips = 250
 MyJako.panostuskierros()
-
+'''
 
 
 

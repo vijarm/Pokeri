@@ -165,7 +165,11 @@ def laskeArvot(kasikortit: list) -> dict:
             "luokka": luokka
             }
     
-
+'''
+Tehdäänkö erilliset funktiot, joissa toinen hakee voittajan, palauttaa myös käden vahvuuden jne. 
+Toinen analysoi myös suositukset vaihtoihin jne. Hakeeko yo funktio kuitenkin kaiken tiedon kerralla aina?
+Joku flag haetaanko voittajaa vai analyysiä, ja sen perusteella palauttaa? 
+'''
 def haeVoittaja(pelaajat: list) -> list:
     tulos = []
     voittaja = []
