@@ -1,5 +1,4 @@
 from Pakka import Pakka, Kortti
-from Jako import Jako
 from Pistelasku import laskeArvot
 from Pelaaja import Pelaaja
 from Pelipoyta import Pelipoyta
@@ -10,7 +9,7 @@ print("POKERIPELIN IHIMEELLINEN MUALIMA")
 #Alustetaan pakka
 PerusPakka = Pakka()
 PerusPakka.luo_pakka()
-#Pelipakka kierrokselle on aina eri kuin PerusPaikka
+#Pelipakka kierrokselle on aina eri kuin PerusPakka
 PeliPakka = Pakka()
 PeliPakka.kortit = PerusPakka.kortit.copy()
 
@@ -34,7 +33,7 @@ MyGame.autoPeli()  #pelaa tietokoneilla pelin kaikki kädet alusta loppuun
 testilista = []
 for i in range(4):
     nimi = f"Pelaaja {i+1}"
-    tyyppi = "Tietsikka"
+    tyyppi = "Ihminen"
     testilista.append(Pelaaja(nimi, tyyppi))
 
 testilista[3].chips = 200

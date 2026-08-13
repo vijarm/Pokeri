@@ -5,15 +5,38 @@ from Pelaaja import Pelaaja
 Koodi voisi näyttää siistimmältä jos panostuskierroksen olisi siirtänyt kokonaan omaan classiin,
 mutta toistaiseksi olkoon näin. 
 '''
+'''        aktiiviset = [p for p in self.pelaajat if p.aktiivinen and p.chips > 0]  #Vain aktiiviset pelaa, lisävarmistus chips > 0
+        if len(aktiiviset) < 2: return
+
+        jakaja = aktiiviset.index(self.paivitaJakaja())
+        panos = 100 + (50 * ((self.kierros - 1) // 4))  #panos nousee 50% alkupanoksesta joka 4. kierros, voi myös muuttaa muuttujaksi
+
+        self.jako = Jako(self.pelipakka, aktiiviset, panos, jakaja)  
+
+        
+        def __init__(self, pelipakka, pelaajalista: list, alkupanos: int, jakaja: int):
+                self.pakka = pelipakka
+                self.pelaajat = pelaajalista
+                self.mukanaPotissa = pelaajalista.copy()
+                self.potti = 0
+                self.alkupanos = alkupanos
+                self.jakaja = jakaja #Jakajan indeksi pelaajalistasta
+                self.vuoro = pelaajalista[jakaja]
+                self.pelivaihe = 0  # 1 = 1. panostus | 2 = vaihdot | 3 = 2. panostus | 4 = showdown
+        
+        '''
 
 class Jako:
-    def __init__(self, pelipakka, pelaajalista: list, alkupanos: int, jakaja: int):
-        self.pakka = pelipakka
-        self.pelaajat = pelaajalista
-        self.mukanaPotissa = pelaajalista.copy()
+    def __init__(self, pelipoyta):
+        self.pelipoyta = pelipoyta
+        self.pakka = pelipoyta.pelipakka
+        self.pelaajat = [p for p in pelipoyta.pelaajat if p.aktiivinen and p.chips > 0]
+        self.mukanaPotissa = self.pelaajat.copy()
         self.potti = 0
-        self.alkupanos = alkupanos
-        self.jakaja = jakaja #Jakajan indeksi pelaajalistasta
+        self.alkupanos = 100 + (50 * ((pelipoyta.kierros - 1) // 4))  #panos nousee 50% alkupanoksesta joka 4. kierros, voi myös muuttaa muuttujaksi
+        self.jakaja = self.pelaajat.index(pelipoyta.paivitaJakaja()) #Jakajan indeksi pelaajalistasta
+        self.vuoro = self.pelaajat[self.jakaja]
+        self.pelivaihe = 0  # 1 = 1. panostus | 2 = vaihdot | 3 = 2. panostus | 4 = showdown
 
         self.discardPile = [] #tarvitaanko, vai popataanko vaan veks?
         self.suurinKorotus: int = 0 
@@ -25,24 +48,27 @@ class Jako:
         self.jaaKortit()
 
         #panostuskierros ennen vaihtoja
+        self.pelivaihe = 1
         voittaja = self.panostuskierros()
         if voittaja:
             print("KAIKKI MUUT FOLDASI JA", voittaja.nimi, "voitti!")
             return [(haeVoittaja([voittaja]), self.potti)]  #Kierrätetään haeVoittaja -kautta, eli käsi evaluoidaan ja näytetään aina? Pitää palauttaa listana!
 
         #vaihdot, alkaa jakajasta seuraavasta:
+        self.pelivaihe = 2
         for i in range(1, len(self.pelaajat) + 1):
             vuorossa = self.pelaajat[(i + self.jakaja) % len(self.pelaajat)]
             if vuorossa in self.mukanaPotissa:
-                self.pyydaVaihto(vuorossa)
-
+                vuorossa.vaihtoja = self.pyydaVaihto(vuorossa)
 
         #panostuskierros vaihtojen jälkeen
+        self.pelivaihe = 3
         voittaja = self.panostuskierros()
         if voittaja:
             print("KAIKKI MUUT FOLDASI JA", voittaja.nimi, "voitti!")
             return [(haeVoittaja([voittaja]), self.potti)]
 
+        self.pelivaihe = 4
         self.kerroKortit()
         voittaja = self.vertaaKadet(self.mukanaPotissa) #vertaaKadet hakee voittajat niin, että katsoo myös sidepotit?
         voittajalista = self.jaaPotti()
@@ -54,8 +80,16 @@ class Jako:
         self.jaaKortit()
 
         #Sitten kun voi automatisoida niin tähän väliin tulee:
-        #panostuskierros -> vaihdot -> panostuskierros
+        #panostuskierros 
 
+        for i in range(1, len(self.pelaajat) + 1):
+                    vuorossa = self.pelaajat[(i + self.jakaja) % len(self.pelaajat)]
+                    if vuorossa in self.mukanaPotissa:
+                        vuorossa.vaihtoja = self.pyydaVaihto(vuorossa)
+
+        #Sitten kun voi automatisoida niin tähän väliin tulee:
+        #panostuskierros                         
+        
         self.kerroKortit()
         voittaja = self.vertaaKadet(self.mukanaPotissa)
         voittajalista = self.jaaPotti()
@@ -108,7 +142,7 @@ class Jako:
             print ("OHHHHOHHHHHHHHH TASAPELI!!! KATSOS:", voittaja)
         return voittaja
     
-    def vertaaKadet(self, pelaajat: list) -> list:  #Tähän varmaan kirjoitetaan se, että miten sidepotit ratkaistaan?
+    def vertaaKadet(self, pelaajat: list) -> list:  #Tarvitaanko mihinkään tätä funktiota välissä?
         aktiiviset = []
         for pelaaja in pelaajat:
             if pelaaja.aktiivinen: 
@@ -139,22 +173,38 @@ class Jako:
     def pyydaVaihto(self, pelaaja: Pelaaja): #TÄHÄN sitten jotain, valitaan hiirellä, palauta lista. Funktio palauttaa vaihtojen lkm?
         while True:
             print("Vuorossa", pelaaja.nimi, "|| käsikortit: ", pelaaja.kasikortit)
+            analysoitu = laskeArvot(pelaaja.kasikortit, vaihtoja=True)
+            print("Kädessä on:", analysoitu["kasinimi"], "|| Vaihtosuosituksia:", analysoitu["vaihtosuositus"])
+            vaihdettu = 0
+
+            if pelaaja.tyyppi == "Tietsikka":
+                if len(analysoitu["vaihtosuositus"]) > 0:
+                    for kortti in analysoitu["vaihtosuositus"][0]:
+                        pelaaja.kasikortit.remove(kortti)
+                        pelaaja.kasikortit.append(self.pakka.nosta())
+                        vaihdettu += 1
+                return vaihdettu
+            
             vaihdetaan = input("Mitä vaihdetaan indeksillä?")
             if vaihdetaan.strip() == "": break
+
+            if vaihdetaan.strip() == "a":
+                if len(analysoitu["vaihtosuositus"]) > 0:
+                    for kortti in analysoitu["vaihtosuositus"][0]:
+                        pelaaja.kasikortit.remove(kortti)
+                        pelaaja.kasikortit.append(self.pakka.nosta())
+                        vaihdettu += 1
+                return vaihdettu
+
             lista = vaihdetaan.split(" ")
-            if len(lista) > 5: continue
-            virhe = False
-            for i in lista:
-                if i not in "01234": 
-                    virhe = True
-                    break
-            if virhe: continue
+
             #Tässä tapahtuu nyt se vaihto (yksi kerrallaan)
             for indeksi in sorted(lista, reverse=True):
                 pelaaja.kasikortit.pop(int(indeksi))
             for i in range(len(lista)):
                 pelaaja.kasikortit.append(self.pakka.nosta())
-            break
+                vaihdettu += 1
+            return vaihdettu
 
     def panostuskierros(self) -> Pelaaja | None:
         if sum(not p.allin for p in self.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen, on jo all-in.
@@ -165,7 +215,7 @@ class Jako:
         
         while True:
             nytVuorossa = self.pelaajat[(vuoro + self.jakaja) % len(self.pelaajat)] 
-
+            self.vuoro = nytVuorossa
             print("Vuoro", vuoro, "pelaaja:", nytVuorossa.nimi)
             
             if nytVuorossa not in self.mukanaPotissa or nytVuorossa.allin == True: #jos pelaaja on foldannut tai mennyt all-in
@@ -217,7 +267,13 @@ class Jako:
         if (pelaaja.chips > maksettavaa): print("2. Raise") 
         print("3. Fold")
 
-        valinta = input("Valintasi: ")
+        try:
+            valinta = int(input("Valintasi: "))
+            if valinta not in (1,2,3):
+                valinta = 1
+        except ValueError:
+            valinta = 1
+
         pelaaja.valinta = int(valinta)
         
         if pelaaja.valinta == 1:
