@@ -16,6 +16,7 @@ class Pelipoyta:
         self.jakovuoro: int = randint(0, len(pelaajat) - 1)  #Ensimmäinen jakaja arvotaan
         self.jakaja: Pelaaja = self.pelaajat[self.jakovuoro % len(self.pelaajat)]
 
+        self.pelivaihe = 0  # 1 = 1. panostus | 2 = vaihdot | 3 = 2. panostus | 4 = showdown
         self.jako = None
     
 
@@ -37,11 +38,12 @@ class Pelipoyta:
         while True:
             self.kierros += 1
             self.uusiKierros()
-            self.lopetaKierros()
+            self.lopetaKierros()  #nollaa tiedot
                         
             if sum(p.aktiivinen for p in self.pelaajat) == 1:
                 self.julistaVoittaja(next(p for p in self.pelaajat if p.aktiivinen))
                 break
+            self.paivitaNakymat()
         print("Peli päättyi, jakoja voittajan löytämiseen tarvittiin", self.kierros)
                      
 
@@ -63,6 +65,7 @@ class Pelipoyta:
         for x in range(len(tulos)):
             for y in range(len(tulos[x][0])):
                 tulos[x][0][y]["pelaaja"].chips += (tulos[x][1] // len(tulos[x][0]))
+                self.paivitaNakymat() #Joku pottikohtainen näytä ja click to continue tai sleep
 
         for i in self.pelaajat:
             print(i.nimi, i.chips)
@@ -96,6 +99,7 @@ class Pelipoyta:
         self.pelipakka.kortit = self.PerusPakka.kortit.copy()
 
     def julistaVoittaja(self, voittaja: Pelaaja):
+        self.paivitaNakymat()
         print("TÖTTÖTTÖRÖÖÖÖ RÖ TÖÖÖ!!!")
         print("MEILLÄ ON UUSI MESTARI!")
         print("HÄN KULKEE NIMELLÄ", voittaja.nimi, "JA PEITTOSI MUUT KERÄÄMÄLLÄ", voittaja.chips, "CHIPPIÄ!")
@@ -114,25 +118,6 @@ class Pelipoyta:
     def paivitaNakymat(self):  #Päivitetään näkymä, jota käytetään GUI:ssa ja jolla rajataan mitä kukakin näkee
         for pelaaja in self.pelaajat:
             pelaaja.nakyma = PelaajaNakyma(pelaaja, self)
+            
             #TÄHÄN MYÖHEMMIN: Jos pelaaja = nettipelaaja client -> lähetä uusi näkymä
 
-
-testipelaajat = [Pelaaja(nimi = "Ykkönen", tyyppi = "joku"), Pelaaja(nimi = "Kakkonen", tyyppi = "joku"), Pelaaja(nimi = "Kolmonen", tyyppi = "joku"), Pelaaja(nimi = "Nelonen", tyyppi = "joku")]
-testipelaajat[1].aktiivinen = False
-testipelaajat[0].aktiivinen = False
-vuoro = 0
-
-for i in range(10):
-    while True:
-        vuoro += 1
-        print("Nyt on vuoro", vuoro)
-        if testipelaajat[vuoro % len(testipelaajat)].aktiivinen == False:
-            print("Pelaaja: ", testipelaajat[vuoro % len(testipelaajat)].nimi, "skipataan")
-            continue
-        else:
-            #print("vuoro", vuoro, "ja laskun tulos ", vuoro % len(testipelaajat))
-            jakaja = testipelaajat[vuoro % len(testipelaajat)]
-            break
-    print("Tämä palautetaan funktiosta:", jakaja)
-    indeksi = testipelaajat.index(jakaja)
-    print("indeksi", indeksi)

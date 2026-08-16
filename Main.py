@@ -21,9 +21,23 @@ for kortti in PeliPakka.kortit:
 
 testilista = []
 for i in range(4):
-    nimi = f"Pelaaja {i+1}"
-    tyyppi = "Tietsikka"
-    testilista.append(Pelaaja(nimi, tyyppi))
+    if i < 2:
+        nimi = f"Random {i+1}"
+        tyyppi = "Tietsikka"
+        AI_tyyppi = "random"
+        testilista.append(Pelaaja(nimi, tyyppi, AI_valinta=AI_tyyppi))
+    elif i == 2:
+        nimi = f"Steadycarlo {i+1}"
+        tyyppi = "Tietsikka"
+        AI_tyyppi = "steady"
+        testilista.append(Pelaaja(nimi, tyyppi, AI_valinta=AI_tyyppi))
+    else:
+        nimi = f"Montecarlo {i+1}"
+        tyyppi = "Tietsikka"
+        AI_tyyppi = "montecarlo"
+        testilista.append(Pelaaja(nimi, tyyppi, AI_valinta=AI_tyyppi))
+
+
 
 
 MyGame = Pelipoyta(testilista)
@@ -40,7 +54,7 @@ testilista[3].chips = 200
 
 ManualGame = Pelipoyta(testilista)
 # ManualGame.uusiKierros()  #Menee normimoodin mukaan yksi kierros, kaikki manual
-ManualGame.testiPeli()
+# ManualGame.testiPeli()  #Täysi pelit chipit nolliin
 
 '''Testijako
 MyJako = Jako(PerusPakka, testilista, 0, 0)

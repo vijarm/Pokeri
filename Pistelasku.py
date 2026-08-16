@@ -11,7 +11,7 @@
 # 7 - Neloset
 # 8 - Värisuora
 #
-# Palautetaan muodossa {"kasinimi": str, "vahvuus": tuple, "luokka": int, "vaihtosuositus": list}
+# Palautetaan muodossa {"kasinimi": str, "vahvuus": tuple, "voittoArvio": tuple, "vaihtosuositus": list}
 
 from collections import Counter
 
@@ -24,7 +24,7 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
     vari = False
     vahvin = None
     vertailukortit = None
-    luokka = None
+    voittoArvio = None
     vaihtosuositus = []  #lista listoista: voi olla useampia eri usean kortin vaihtosuosituksia
 
 # TÄSTÄ VOISI SIIRTÄÄ SUORAN JA VÄRIN TARKISTUKSEN SEN TAAKSE,
@@ -62,8 +62,9 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Värisuora", 
             "vahvuus": (8, vertailukortit), 
-            "luokka": 20,
-            "vaihtosuositus": vaihtosuositus
+            "voittoArvio": VOIMALUVUT[17],
+            "vaihtosuositus": vaihtosuositus,
+            "kasikortit": kasikortit
             }    
 
     #Neloset                     
@@ -79,8 +80,9 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Neloset", 
             "vahvuus": (7, vahvin, vertailukortit), 
-            "luokka": 19,
-            "vaihtosuositus": vaihtosuositus
+            "voittoArvio": VOIMALUVUT[16],
+            "vaihtosuositus": vaihtosuositus,
+            "kasikortit": kasikortit
             }
 
         
@@ -94,8 +96,9 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Täyskäsi", 
             "vahvuus": (6, vahvin, vertailukortit), 
-            "luokka": 17,
-            "vaihtosuositus": vaihtosuositus
+            "voittoArvio": VOIMALUVUT[15],
+            "vaihtosuositus": vaihtosuositus,
+            "kasikortit": kasikortit
             }
     
     
@@ -105,8 +108,9 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Väri", 
             "vahvuus": (5, *vertailukortit), 
-            "luokka": 15,
-            "vaihtosuositus": vaihtosuositus
+            "voittoArvio": VOIMALUVUT[14],
+            "vaihtosuositus": vaihtosuositus,
+            "kasikortit": kasikortit
             }
 
     
@@ -115,7 +119,7 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Suora", 
             "vahvuus": (4, vertailukortit), 
-            "luokka": 13,
+            "voittoArvio": VOIMALUVUT[13],
             "vaihtosuositus": vaihtosuositus
             }
     
@@ -126,7 +130,11 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         for value, count in numero_counter.items():
             if count == 3:
                 vahvin = value
-                luokka = 12 if (vahvin > 9) else 11
+                if (vahvin > 9):
+                    voittoArvio = VOIMALUVUT[12]
+                elif (vahvin > 5 and vahvin <= 9):
+                    voittoArvio = VOIMALUVUT[11]
+                else: voittoArvio = VOIMALUVUT[10]
             if count == 1:
                 vertailukortit.append(value)
         vertailukortit.sort(reverse=True)
@@ -138,7 +146,7 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Kolmoset", 
             "vahvuus": (3, vahvin, *vertailukortit), 
-            "luokka": luokka,
+            "voittoArvio": voittoArvio,
             "vaihtosuositus": vaihtosuositus
             }
     
@@ -149,9 +157,9 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
             if count == 2:
                 vahvin.append(value)
                 vahvin.sort(reverse=True)
-                if vahvin[0] >= 12: luokka = 9
-                elif (vahvin[0] > 8 and vahvin[0] < 12): luokka = 8 
-                else: luokka = 7
+                if vahvin[0] >= 12: voittoArvio = VOIMALUVUT[9]
+                elif (vahvin[0] > 7 and vahvin[0] < 12): voittoArvio = VOIMALUVUT[8] 
+                else: voittoArvio = VOIMALUVUT[7]
             if count == 1:
                 vertailukortit = value
                 if vaihtoja:
@@ -164,7 +172,7 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Kaksi paria", 
             "vahvuus": (2, *vahvin, vertailukortit), 
-            "luokka": luokka,
+            "voittoArvio": voittoArvio,
             "vaihtosuositus": vaihtosuositus
             }
 
@@ -174,9 +182,10 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         for value, count in numero_counter.items():
             if count == 2:
                 vahvin = value
-                if vahvin > 12: luokka = 5
-                elif (vahvin > 9 and vahvin <= 12): luokka = 4
-                else: luokka = 3
+                if vahvin > 12: voittoArvio = VOIMALUVUT[6]
+                elif (vahvin > 9 and vahvin <= 12): voittoArvio = VOIMALUVUT[5]
+                elif (vahvin > 5 and vahvin <= 9): voittoArvio = VOIMALUVUT[4]
+                else: voittoArvio = VOIMALUVUT[3]
                 
             if count == 1:
                 vertailukortit.append(value)
@@ -200,14 +209,18 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Pari", 
             "vahvuus": (1, vahvin, *vertailukortit), 
-            "luokka": luokka,
+            "voittoArvio": voittoArvio,
             "vaihtosuositus": vaihtosuositus
             }
     
     #Hai
     else:
         vertailukortit = sorted(numero_counter.keys(), reverse=True)
-        luokka = 2 if vertailukortit[0] >= 13 else 1   
+        if vertailukortit[0] >= 13:
+            voittoArvio = VOIMALUVUT[2] 
+        elif vertailukortit[0] > 9 and vertailukortit[0] < 13:
+            voittoArvio = VOIMALUVUT[1] 
+        else: voittoArvio = VOIMALUVUT[0]
 
         if vaihtoja:
             vaihdettavat = suoraPaadytAuki(numero_arvot, kasikortit)  #Vaihtoehto 1: yhden vaille suora (väri on lisätty jo alussa)
@@ -223,7 +236,7 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
         return {
             "kasinimi": "Hai", 
             "vahvuus": (0, *vertailukortit), 
-            "luokka": luokka,
+            "voittoArvio": voittoArvio,  #kuvaa käsien välisiä vahvuuseroja (EI voittotodennäköisyys)
             "vaihtosuositus": vaihtosuositus
             }
 
@@ -242,11 +255,7 @@ def suoraPaadytAuki(numerolista: list, kasikortit: list) -> list | None:
         return None
 
     
-'''
-Tehdäänkö erilliset funktiot, joissa toinen hakee voittajan, palauttaa myös käden vahvuuden jne. 
-Toinen analysoi myös suositukset vaihtoihin jne. Hakeeko yo funktio kuitenkin kaiken tiedon kerralla aina?
-Joku flag haetaanko voittajaa vai analyysiä, ja sen perusteella palauttaa? 
-'''
+
 def haeVoittaja(pelaajat: list) -> list:
     tulos = []
     voittaja = []
@@ -264,4 +273,48 @@ def haeVoittaja(pelaajat: list) -> list:
         print ("VOITTAJA!!! Pelin voitti", voittaja[0]["pelaaja"], "kädessään", voittaja[0]["kasinimi"])
     else:
         print ("OHHHHOHHHHHHHHH TASAPELI!!! KATSOS:", voittaja)
-    return voittaja    
+    return voittaja  #Tämä palautettava muoto ei nyt ehkä ole selkein... 
+
+# Voimaluvut: (tunnus, vertailussa käytettävä vahvuusluku)
+# Kun vahvuus >= 13, niin voittotodennäköisyys > 90
+VOIMALUVUT_NELIO = [
+    (0, 0),    # Hai pieni
+    (1, 0),    # Hai 9-12
+    (2, 1),    # Hai >12
+    (3, 2),    # Pari pieni
+    (4, 5),    # Pari 6-9
+    (5, 14),   # Pari 10-12
+    (6, 31),   # Pari >12
+    (7, 37),   # Kaksi paria, johtava <7
+    (8, 43),   # Kaksi paria, johtava 7-11
+    (9, 57),   # Kaksi paria, johtava >11
+    (10, 64),  # Kolmoset pieni
+    (11, 71),  # Kolmoset 6-9
+    (12, 83),  # Kolmoset > 9
+    (13, 91),  # Suora
+    (14, 93),  # Väri 
+    (15, 96),  # Täyskäsi
+    (16, 99),  # Neloset
+    (17, 100)  # Värisuora
+]
+
+VOIMALUVUT = [
+    (0, 0),    # Hai pieni
+    (1, 1),    # Hai 9-12
+    (2, 6),    # Hai >12
+    (3, 13),   # Pari pieni
+    (4, 23),   # Pari 6-9
+    (5, 38),   # Pari 10-12
+    (6, 56),   # Pari >12
+    (7, 61),   # Kaksi paria, johtava <7
+    (8, 65),   # Kaksi paria, johtava 7-11
+    (9, 75),   # Kaksi paria, johtava >11
+    (10, 80),  # Kolmoset pieni
+    (11, 84),  # Kolmoset 6-9
+    (12, 91),  # Kolmoset > 9
+    (13, 95),  # Suora
+    (14, 97),  # Väri 
+    (15, 98),  # Täyskäsi
+    (16, 99),  # Neloset
+    (17, 100)  # Värisuora
+]
