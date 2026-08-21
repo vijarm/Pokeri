@@ -2,22 +2,83 @@ from Pelaaja import Pelaaja
 
 
 class PanostusKierros:
-    def __init__(self, jako, pelipoyta):
+    def __init__(self, jako, pelipoyta, kierros=2):
         self.jako = jako
         self.pelipoyta = pelipoyta
-        
-        self.panos = jako.alkupanos
+
+        self.kierros = kierros # kierros 1 = ennen vaihtoja, 2 = vaihtojen jälkeen
+        self.panos = jako.panos
         self.pelaajaVuorossa = jako.pelaajat[jako.jakaja]
 
         self.suurinKorotus: int = 0 
 
+        self.vuoro = 1
+        self.valmis = False
+        self.odottaaValintaa = False
+        self.voittaja = None
 
+    #Panostuskierroksen päälooppi
+    def paivitaTila(self):
+
+        if self.valmis:
+            return
+
+        if self.odottaaValintaa:
+            valintaStr = self.pelaajaVuorossa.gui.valintapaneeli.get_valinta()
+            if valintaStr is None:
+                return
+
+            if valintaStr == "maksa": valinta = 1
+            elif valintaStr == "pieniKorotus": valinta = 2
+            elif valintaStr == "suuriKorotus": valinta = 3
+            elif valintaStr == "luovuta": valinta = 4
+            else: raise ValueError("Tuntematon panostuksen valintateksti:", valintaStr)
+
+            self.vastaanotaPanostus(self.pelaajaVuorossa, valinta)
+            #self.pelaajaVuorossa.gui.valintapaneeli.mode = "odottaa"  #TÄLLAISIA NIIHIN VÄLEIHIN MISSÄ NIITÄ TARVITAAN
+            return            
+
+        if sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen
+            return  #Jos max 1 pelaaja olisi panostamassa, panostuskierrosta ei tarvita. 
+        
+        self.pelipoyta.paivitaNakymat()
+                
+        while True:
+            self.pelaajaVuorossa = self.jako.pelaajat[(self.vuoro + self.jako.jakaja) % len(self.jako.pelaajat)] 
+            
+            if self.pelaajaVuorossa not in self.jako.mukanaPotissa or self.pelaajaVuorossa.allin == True: #jos pelaaja on foldannut tai mennyt all-in
+                if all(p.allin for p in self.jako.mukanaPotissa): #Jos kaikki pelaajat on all-in, panostuskierros päättyy
+                    self.lopetaKierros()
+                    return
+                self.vuoro += 1
+                continue
+            #Jos pelaajan edellisen vuoron jälkeen ei ole tullut korotuksia && kierros on mennyt vähintään kerran ympäri -> kierros päättyy
+            if (self.pelaajaVuorossa.maksettuPanostukseen == self.suurinKorotus and self.vuoro > len(self.jako.pelaajat)): 
+                self.lopetaKierros()
+                return
+
+            if self.pelaajaVuorossa.ai is not None:  #AI voi jatkaa suoraan
+                valinta = self.pelaajaVuorossa.pyydaPanostus(self.kierros)
+                self.kasittelePanostus(self.pelaajaVuorossa, valinta)
+                self.vuoro += 1
+                self.pelipoyta.paivitaNakymat()
+                continue
+
+            else:
+                #Ihmispelaaja jää odottamaan valintaa
+                self.odottaaValintaa = True
+                self.pelaajaVuorossa.gui.valintapaneeli.mode = "panostus"
+                self.pelipoyta.paivitaNakymat()
+                return
+
+    '''
     def suoritaKierros(self) -> Pelaaja | None:
         if sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen, on jo all-in.
             return None  #Jos vain max 1 pelaaja olisi panostamassa, panostuskierrosta ei tapahdu. 
 
         vuoro = 1  #Aloitetaan jakajasta suoraavasta, joten aloitusvuoro on 1
         print("Panostuskierros alkaa! Vuoro on", vuoro, "ja jakajaindex pelillä on", self.jako.jakaja)
+        self.pelipoyta.paivitaNakymat()
         
         while True:
             self.pelaajaVuorossa = self.jako.pelaajat[(vuoro + self.jako.jakaja) % len(self.jako.pelaajat)] 
@@ -66,50 +127,103 @@ class PanostusKierros:
             return self.jako.mukanaPotissa[0]
         else: 
             return None
+    '''
 
-
-    def pyydaPanostus(self, pelaaja: Pelaaja):
+    def kasittelePanostus(self, pelaaja: Pelaaja, valinta):
 
         maksettavaa = self.suurinKorotus - pelaaja.maksettuPanostukseen
 
-        pelaaja.valinta = pelaaja.pyydaPanostus()
+        pelaaja.valinta = valinta
         
-        if pelaaja.valinta == 1:
+        if valinta == 1:
             call = self.maksaPanos(pelaaja, maksettavaa)
-            print("Pelaaja", pelaaja.nimi, "-> CALL", call, "merkkiä!")
+            if call == 0:
+                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} check!")
+            else:    
+                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} maksoi {call} merkkiä!")
 
         elif pelaaja.valinta == 2:
             korotus = self.maksaPanos(pelaaja, maksettavaa + self.panos)
-            print("Pelaaja", pelaaja.nimi, "-> KOROTUS", korotus, "merkkiä!")
+            self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} korotti {korotus} merkkiä!")
+
+        elif pelaaja.valinta == 3:
+            korotus = self.maksaPanos(pelaaja, maksettavaa + (3 * self.panos) )
+            self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} korotti {korotus} merkkiä!")
 
         else:
             if maksettavaa > 0:
                 self.jako.mukanaPotissa.remove(pelaaja)
-                print("Pelaaja", pelaaja.nimi, "-> FOLD")
-                pelaaja.valinta = 3 #Tämä vain siksi, että funktio ei nyt tarkista syötettä, ja voi jäädä loop jos syöttää 4 tms
+                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} kippasi!")
+                pelaaja.valinta = 4 
             else: 
                 pelaaja.valinta = 1 #automaattinen check, ei voi foldata ilman panosta vastassa.
-                print("Pelaaja ei foldaa, koska ei ole maksettavaa, pakotettu CHECK!")
+                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} check!")
+
+        self.odottaaValintaa = False
 
 
-    def maksaPanos(self, pelaaja: Pelaaja, maara: int) -> int:
+    def maksaPanos(self, pelaaja: Pelaaja, maara: int) -> int:  #Tätä varmaan voisi tiivistää/selkeyttää, mutta toimii
         if pelaaja.chips > maara:
             self.jako.potti += maara
             pelaaja.maksettuPanostukseen += maara
             pelaaja.maksettuJakoon += maara
             pelaaja.chips -= maara
-            if pelaaja.valinta == 2:
-                self.suurinKorotus += self.panos
+            if pelaaja.valinta == 2 or pelaaja.valinta == 3:
+                self.suurinKorotus = pelaaja.maksettuPanostukseen
+
         else: #Kun pelaajalla chipsejä vähemmän kuin pyydetty määrä, maksetaan kaikki mitä on, ja chips = 0.
             maara = pelaaja.chips
             self.jako.potti += maara
             pelaaja.maksettuPanostukseen += maara
             pelaaja.maksettuJakoon += maara
-            if pelaaja.valinta == 2 and pelaaja.maksettuPanostukseen > self.suurinKorotus:
+            if (pelaaja.valinta == 2 or pelaaja.valinta == 3) and pelaaja.maksettuPanostukseen > self.suurinKorotus:
                 self.suurinKorotus = pelaaja.maksettuPanostukseen
             pelaaja.chips = 0
             pelaaja.allin = True
         print("\nTämä pelaaja on nyt maksanut panostukseen,", pelaaja.maksettuPanostukseen, "ja koko jakoon", pelaaja.maksettuJakoon, "\n")
         return maara #Palauttaa pottiin maksettujen chippien määrän
+
+
+    def vastaanotaPanostus(self, pelaaja, valinta):
+        assert pelaaja is not None
+
+        self.kasittelePanostus(pelaaja, valinta)
+        self.vuoro += 1
+
+    def lopetaKierros(self):
+        #Tarkistetaanko onko joku maksanut "liikaa" -> korotus johon kukaan ei ole vastannut palautetaan
+        SuurinPanosEnsin = sorted(self.jako.pelaajat, key=lambda p: p.maksettuPanostukseen, reverse=True)
+
+        if len(SuurinPanosEnsin) >= 2:
+            maksettuLiikaa = SuurinPanosEnsin[0].maksettuPanostukseen - SuurinPanosEnsin[1].maksettuPanostukseen
+
+            if maksettuLiikaa != 0:
+                print("PALAUTETAAN LIIKAA MAKSETTU PELAAJALLE,", SuurinPanosEnsin[0].nimi, "yhteensä:", maksettuLiikaa)
+                self.jako.potti -= maksettuLiikaa  #Vähennetään potista ja pelaajan kontribuutio-tiedoista, lisätään chipit stackiin.
+                SuurinPanosEnsin[0].maksettuJakoon -= maksettuLiikaa
+                SuurinPanosEnsin[0].maksettuPanostukseen -= maksettuLiikaa
+                SuurinPanosEnsin[0].chips += maksettuLiikaa
+
+        self.pelipoyta.loggaa(f"Panostuskierros päättyi, potissa: {self.jako.potti}")
+        
+        for p in self.jako.pelaajat: #Nollataan panostuskierroksen tiedot
+            p.nollaaPanos()
+        self.suurinKorotus = 0
+        self.pelipoyta.paivitaNakymat() 
+
+
+        if len(self.jako.mukanaPotissa) == 1: 
+            self.voittaja = self.jako.mukanaPotissa[0]
+        else: 
+            self.voittaja = None
+
+        self.valmis = True
+        self.odottaaValintaa = False
+
+
+
+        
+
+        
 
 

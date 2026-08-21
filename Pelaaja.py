@@ -1,5 +1,6 @@
 from AI.AI import randomAI, montecarloAI, steadycarloAI, superAI
 from Pistelasku import laskeArvot
+from GUI.GUI import GUI
 
 AI_TYYPIT = {
     "random": randomAI,
@@ -9,20 +10,22 @@ AI_TYYPIT = {
 }
 
 class Pelaaja:
-    def __init__(self, nimi, tyyppi, AI_valinta=None):
+    def __init__(self, nimi, tyyppi, AI_valinta=None, AI_asetukset=None):
         self.nimi: str = nimi
         self.tyyppi: str = tyyppi
         self.aktiivinen: bool = True
 
         self.nakyma: PelaajaNakyma
+        self.gui: GUI
 
         if AI_valinta is not None:
-            self.ai = AI_TYYPIT[AI_valinta](self)
+            self.ai = AI_TYYPIT[AI_valinta](self, AI_asetukset)
+            self.ai_tyyppi = AI_valinta
         else:
             self.ai = None
 
         self.kasikortit: list = []
-        self.chips: int = 1000
+        self.chips: int = 10000
         self.allin: bool = False
         self.maksettuJakoon: int = 0
         self.maksettuPanostukseen: int = 0
@@ -43,15 +46,45 @@ class Pelaaja:
         self.allin = False
         self.maksettuJakoon = 0
         self.vaihtoja = None
+        if self.ai is not None:
+            self.ai.nollaaKierros()
 
     def nollaaPanos(self):
         self.maksettuPanostukseen = 0
         self.valinta = 0
 
+    def nollaaKokoPeli(self):
+        self.chips = 10000
+        self.aktiivinen = True
+        self.nollaaKierros()
+        self.nollaaPanos()
+
     def tulostaKasi(self):
         print(f"Pelaaja {self.nimi}, käsikortit: {self.kasikortit}")
 
+
     def pyydaVaihdot(self) -> list:
+        vaihdettavat = []
+        if self.ai is not None:
+            vaihdettavat = self.ai.vaihdaKortit()
+        else:  # Nää tulee myöhemmin GUI:n kautta
+            analysoitu = laskeArvot(self.nakyma.kasikortit, vaihtoja=True)
+
+            self.gui.valintapaneeli.mode = "vaihdot"
+
+            while self.gui.valintapaneeli.vaihdettavat is None:
+                self.gui.process_events()
+                self.gui.draw()
+                self.gui.clock.tick(60)  #FPS
+
+            vaihtoindeksit = self.gui.valintapaneeli.get_valinta()
+            assert isinstance(vaihtoindeksit, list)
+            vaihdettavat = [self.nakyma.kasikortit[i] for i in vaihtoindeksit]
+
+        return vaihdettavat
+
+    
+    def pyydaVaihdotTeksti(self) -> list:
         vaihdettavat = []
         if self.ai is not None:
             vaihdettavat = self.ai.vaihdaKortit()
@@ -72,32 +105,65 @@ class Pelaaja:
 
         return vaihdettavat
 
-    def pyydaPanostus(self) -> int:
+    
+    def pyydaPanostus(self, kierros=2) -> int:
 
-        #Tähän joku kutsu jos on AI
+        assert self.ai is not None
+
+        return self.ai.pyydaPanostus(kierros)
+
+
+        '''vanha gui
+            self.gui.valintapaneeli.mode = "panostus"
+
+            while self.gui.valintapaneeli.valinta is None:
+
+                self.gui.process_events()
+                self.gui.draw()
+
+                self.gui.clock.tick(60)  #FPS
+
+            valintaStr = self.gui.valintapaneeli.get_valinta()
+            if valintaStr == "maksa": valinta = 1
+            elif valintaStr == "pieniKorotus": valinta = 2
+            elif valintaStr == "suuriKorotus": valinta = 3
+            else: valinta = 4
+
+            
+
+        return valinta
+        '''
+    
+    def pyydaPanostusTeksti(self, kierros=2) -> int:
+
         if self.ai is not None: 
-            #valinta = self.ai.pyydaPanostus()
-            return 1
+            valinta = self.ai.pyydaPanostus(kierros)
 
         else:
-            maksettavaa = self.nakyma.suurinKorotus - self.nakyma.maksettuPanostukseen
+            if ((self.nakyma.maksettavaa is None) or (self.nakyma.pieniKorotus is None) or (self.nakyma.suuriKorotus is None) or (self.nakyma.panos is None)):
+                raise ValueError("Panostuksesta puuttuu arvoja!")
+
+            maksettavaa = self.nakyma.maksettavaa
+            pieniKorotus = self.nakyma.pieniKorotus
+            suuriKorotus = self.nakyma.suuriKorotus
             print("Maksettavaa:", maksettavaa, "|| Käsikortit:", self.nakyma.kasikortit, "|| Potti:", self.nakyma.potti)
-            print("1. Check") if maksettavaa == 0 else print("1. Call")
-            if (self.nakyma.chips > maksettavaa): print("2. Raise") 
-            print("3. Fold")
+
+            print("1. Check") if maksettavaa == 0 else print("1. Call, maksa:", min(maksettavaa, self.nakyma.chips))
+            if (pieniKorotus > 0 and not any(p.valinta == 3 for p in self.nakyma.muutPelaajat)): 
+                print("2. Pieni korotus:", pieniKorotus + maksettavaa, "| korotuksen osuus:", pieniKorotus)
+            if (suuriKorotus > 0 and suuriKorotus > pieniKorotus):
+                print("3. Suuri korotus:", suuriKorotus + maksettavaa, "| korotuksen osuus:", suuriKorotus)
+            print("4. Fold, menetät pottiin maksetut:", self.nakyma.maksettuJakoon)
 
             try:
                 valinta = int(input("Valintasi: "))
-                if valinta not in (1,2,3):
+                if valinta not in (1,2,3,4):
                     valinta = 1
             except ValueError:
                 valinta = 1
 
-            return int(valinta)
+        return int(valinta) 
         
-
-
-
 
 
 class PelaajaNakyma:
@@ -111,21 +177,36 @@ class PelaajaNakyma:
         self.allin = pelaaja.allin
         self.maksettuJakoon = pelaaja.maksettuJakoon
         self.maksettuPanostukseen = pelaaja.maksettuPanostukseen
-        self.valinta = pelaaja.valinta  # 1 call, 2 raise, 3 fold
+        self.valinta = pelaaja.valinta  # 1 call, 2 raise, 3 big raise, 4 fold
         self.vaihtoja = pelaaja.vaihtoja
 
         self.pelivaihe = pelipoyta.pelivaihe  # 1 = 1. panostus | 2 = vaihdot | 3 = 2. panostus | 4 = showdown
         self.kierros = pelipoyta.kierros
         self.jakaja = pelipoyta.jakaja.nimi
+        self.log = pelipoyta.log
+
+        # Jaon ja panostuskierroksen tiedot kirjataan jos oliot ovat olemassa, muuten None  
+        self.potti = None
+        self.mukanaPotissa = None
+        self.panos = None
+
+        self.pelaajaVuorossa = None
+        self.suurinKorotus = None
+        self.maksettavaa = None
+        self.pieniKorotus = None
+        self.suuriKorotus = None
 
         if pelipoyta.jako is not None:
-            self.potti = pelipoyta.jako.potti
-            self.mukanaPotissa = [p.nimi for p in pelipoyta.jako.mukanaPotissa]  #Ei pelaajaolioita viewiin, vain nimiä
-            self.panos = pelipoyta.jako.alkupanos
+            self.potti = pelipoyta.jako.potti 
+            self.mukanaPotissa = [p.nimi for p in pelipoyta.jako.mukanaPotissa] #Ei pelaajaolioita viewiin, vain nimiä
+            self.panos = pelipoyta.jako.panos 
 
             if pelipoyta.jako.panostuskierros is not None:
                 self.pelaajaVuorossa = pelipoyta.jako.panostuskierros.pelaajaVuorossa.nimi
-                self.suurinKorotus = pelipoyta.jako.panostuskierros.suurinKorotus 
+                self.suurinKorotus = pelipoyta.jako.panostuskierros.suurinKorotus
+                self.maksettavaa = self.suurinKorotus - self.maksettuPanostukseen
+                self.pieniKorotus = min(self.panos, self.chips - self.maksettavaa)
+                self.suuriKorotus = min(3 * self.panos, self.chips - self.maksettavaa)
 
         self.muutPelaajat = []
 
@@ -145,4 +226,5 @@ class MuutNakee:
         self.maksettuPanostukseen = pelaaja.maksettuPanostukseen
         self.valinta = pelaaja.valinta
         self.vaihtoja = pelaaja.vaihtoja
+
         
