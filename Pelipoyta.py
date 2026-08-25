@@ -22,7 +22,9 @@ class Pelipoyta:
         self.tila = "peli"
         self.voittaja = None
 
+        self.simulointi = False
         self.log = []
+        self.paivitykset = []
     
 
     def paivitaTila(self):
@@ -79,10 +81,10 @@ class Pelipoyta:
         aktiiviset = [p for p in self.pelaajat if p.aktiivinen and p.chips > 0]  #Vain aktiiviset pelaa, lisävarmistus chips > 0
         if len(aktiiviset) < 2: pass ##### TÄHÄN JOKU self.tila = valmis jos, peli on loppu. Pitäis kyllä tulla muualla.
 
+        self.kierros += 1
         self.paivitaJakaja()
         self.paivitaPanos()
-        self.kierros += 1
-
+        
         self.jako = Jako(self)
 
 
@@ -99,6 +101,7 @@ class Pelipoyta:
                 
         self.lopetaKierros()
         self.paivitaNakymat()
+        self.paivitaGUI("pelipoyta", {"tapahtuma": "potinJako"})
         self.jako = None
 
 
@@ -127,12 +130,15 @@ class Pelipoyta:
             pelaaja.nollaaKierros()
             if pelaaja.chips <= 0:
                 pelaaja.aktiivinen = False
+                self.paivitaNakymat()
+                self.paivitaGUI("pelipoyta", {"tapahtuma": "pelaajaTippui"})
         self.pelipakka.kortit.clear()
         #discardpile, mihin tulee ja tarvitaanko miten?
         self.pelipakka.kortit = self.PerusPakka.kortit.copy()
 
     def julistaVoittaja(self, voittaja: Pelaaja):
         self.paivitaNakymat()
+        self.paivitaGUI("pelipoyta", {"tapahtuma": "voittajaLoytyi"})
         print("TÖTTÖTTÖRÖÖÖÖ RÖ TÖÖÖ!!!")
         print("MEILLÄ ON UUSI MESTARI!")
         print("HÄN KULKEE NIMELLÄ", voittaja.nimi, "JA PEITTOSI MUUT KERÄÄMÄLLÄ", voittaja.chips, "CHIPPIÄ!")
@@ -158,6 +164,15 @@ class Pelipoyta:
             else:
                 self.panos += 200 #väliin jäävillä 21 ja 25 +200
 
+    def loggaa(self, teksti: str):
+        if not self.simulointi:
+            self.log.append(teksti)
+
+
+    def haePaivitykset(self):
+        paivitykset = list(self.paivitykset)
+        self.paivitykset.clear()
+        return paivitykset
 
     def paivitaNakymat(self):  #Päivitetään näkymä, jota käytetään GUI:ssa ja jolla rajataan mitä kukakin näkee
         for pelaaja in self.pelaajat:
@@ -165,6 +180,15 @@ class Pelipoyta:
             
             #TÄHÄN MYÖHEMMIN: Jos pelaaja = nettipelaaja client -> lähetä uusi näkymä
 
-    def loggaa(self, teksti: str):
-        self.log.append(teksti)
+    def paivitaGUI(self, kohde, tapahtuma):  #Tää nyt vaan lisää tapahtuman per pelaaja, mutta jatkossa sen pitäis lähettää tms tilanteen mukaan
+        if not self.simulointi:
+            for p in self.pelaajat:
+                if p.tyyppi == "Ihminen":
+                    self.paivitykset.append(PelitilaUpdate(kohde, tapahtuma, p.nakyma))
 
+
+class PelitilaUpdate:
+    def __init__(self, kohde, tapahtuma, nakyma):
+        self.kohde = kohde
+        self.tapahtuma = tapahtuma
+        self.uusinakyma = nakyma

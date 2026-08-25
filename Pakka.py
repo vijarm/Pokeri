@@ -31,11 +31,11 @@ class Pakka:
         return kadet
 
 class Kortti:
-    def __init__(self, maa, numero):
+    def __init__(self, maa, numero, alaspain=False):
         self.maa: str = maa
         self.numero: int = numero
-        self.alaspain: bool = True
-        self.valittu: bool = False
+        self.alaspain: bool = alaspain
+
     
     def __str__(self):
         return f"{self.maa} {self.numero}"
@@ -54,8 +54,8 @@ class Kortti:
         print(self.maa, self.numero)
 
     def nollaa(self):
-        self.alaspain = True
-        self.valittu = False
+        self.alaspain = False
+
 
     
 

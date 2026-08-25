@@ -17,6 +17,11 @@ GRAY = (150, 150, 150)
 LIGHT_GRAY = (200, 200, 200)
 
 GOLD = (225, 185, 55)
+RED = (220, 50, 50)
+BLUE = (30, 70, 130)
+LIGHT_BLUE = (100, 200, 255)
+TURKOOSI = (64, 224, 208)
+ORANSSI = (230, 126, 34)
 
 
 small_font = pygame.font.SysFont(

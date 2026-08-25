@@ -18,8 +18,6 @@ for i in range(3):
 ManualGame = Pelipoyta(testilista)
 ManualGame.paivitaNakymat()
 
-gui = GUI(testilista[0], ManualGame)
-testilista[0].gui = gui
 
 #ManualGame.testiPeli()  #Täysi pelit chipit nolliin
 
@@ -41,13 +39,20 @@ class Peli:
         self.pelipoyta.paivitaTila()
 
 
-peli = Peli(ManualGame, gui)
+
+peli = Peli(ManualGame)
+peli.gui = GUI(testilista[0], peli)
+testilista[0].gui = peli.gui
+dt = 0
 
 while peli.running:
 
     peli.paivitaTila()
 
-    gui.process_events()
-    gui.draw()
+    peli.gui.process_events()
+    peli.gui.paivita(dt)  #fps
+    peli.gui.draw()
+    
 
-    gui.clock.tick(60)
+    dt = peli.gui.clock.tick(60) / 1000
+

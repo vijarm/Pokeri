@@ -42,8 +42,11 @@ def tilastoiKadet(kierrosmaara: int, pelaajamaara: int, aiclass: str) -> list:
         testipeli.jako.kerroKortit()
 
         for i in range(0, pelaajamaara):
-            vaihtoja = testipeli.jako.pyydaVaihto(testipeli.jako.pelaajat[i])
-            #print("Pelaaja", testipeli.jako.pelaajat[i].nimi, "vaihtoi", vaihtoja, "korttia.")
+            vaihdot = testipeli.jako.pelaajat[i].pyydaVaihdot()
+            for Kortti in vaihdot:
+                testipeli.jako.pelaajat[i].kasikortit.remove(Kortti)
+                testipeli.jako.pelaajat[i].kasikortit.append(testipeli.jako.pakka.nosta())
+            print("Pelaaja", testipeli.jako.pelaajat[i].nimi, "vaihtoi", len(vaihdot), "korttia.")
 
         voittaja = testipeli.jako.vertaaKadet(testipeli.jako.pelaajat)
         voittoluokka = voittaja[0]["voittoArvio"][0]
@@ -100,7 +103,7 @@ def tilastoiKadet(kierrosmaara: int, pelaajamaara: int, aiclass: str) -> list:
     return [voittokadet, haviajakadet, parhaathaviajat]
 
 
-def testaaPanostusta(kierrosmaara: int, pelaajamaara: int, aiclass: str, aisettings: dict):
+def testaaPanostusta(kierrosmaara: int, pelaajamaara: int, aiclass: str, aisettings: dict, kierros=1, vaihdetaan=False):
 
     #Alustetaan pakka
     PerusPakka = Pakka()
@@ -129,20 +132,27 @@ def testaaPanostusta(kierrosmaara: int, pelaajamaara: int, aiclass: str, aisetti
             p.nollaaPanos()
             p.nollaaKierros()
         testipeli.jako = Jako(testipeli)
-        testipeli.jako.panostuskierros = PanostusKierros(testipeli.jako, testipeli)
+        testipeli.jako.panostuskierros = PanostusKierros(testipeli.jako, testipeli, kierros)
         testipeli.jako.panostuskierros.suurinKorotus = 100  #Laitetaan sinne heti korotus, jotta ei voi check (fold muuttuu calliksi muuten)
 
-        testipeli.jako.jaaKortit()
+        testipeli.jako.jaaKortit()  #sample 5 vois olla tehokkaampi, mutta ei nyt oleellista
         testipeli.paivitaNakymat()
         testipeli.jako.kerroKortit()
 
         for i in range(0, pelaajamaara):
             testipeli.paivitaNakymat()
-            testipeli.jako.panostuskierros.pyydaPanostus(testipeli.jako.pelaajat[i])
+            if vaihdetaan == True:
+                vaihdot = testipeli.jako.pelaajat[i].pyydaVaihdot()
+                for Kortti in vaihdot:
+                    testipeli.jako.pelaajat[i].kasikortit.remove(Kortti)
+                    testipeli.jako.pelaajat[i].kasikortit.append(testipeli.jako.pakka.nosta())
+                
+
+            valinta = testipeli.jako.pelaajat[i].pyydaPanostus(kierros)
             testipeli.paivitaNakymat()
             print("Pelaaja", testipeli.jako.pelaajat[i].nimi, "valitsi", testipeli.jako.pelaajat[i].valinta, "panostuksessa.")
 
-            valinnat[testipeli.jako.pelaajat[i].valinta - 1] += 1  #Lasketaan valinnan numerolla indeksiin countit (Huom valintanro > indeksi)
+            valinnat[valinta - 1] += 1  #Lasketaan valinnan numerolla indeksiin countit (Huom valintanro > indeksi)
 
         testipeli.paivitaNakymat()
         testipeli.lopetaKierros()
@@ -168,8 +178,11 @@ def tilastoiVoitot(pelimaara: int, pelaajat=None):
 
     for _ in range(pelimaara):
         MyGame = Pelipoyta(pelaajat)
-        voittaja = MyGame.autoPeli()  #Palauttaa pelin voittaneen Pelaaja-olion
-        Voitot[voittaja] += 1
+        MyGame.simulointi = True
+        while MyGame.voittaja is None:
+            MyGame.paivitaTila()
+
+        Voitot[MyGame.voittaja] += 1
         for p in pelaajat:
             p.nollaaKokoPeli()
 
@@ -178,13 +191,13 @@ def tilastoiVoitot(pelimaara: int, pelaajat=None):
 
 
 
-# listat = tilastoiKadet(50, 2, "random")
-# listat = tilastoiKadet(50, 4, "montecarlo")
-# listat = tilastoiKadet(50, 4, "steady")
+#listat = tilastoiKadet(50, 4, "random")
+#listat = tilastoiKadet(50, 4, "montecarlo")
+#listat = tilastoiKadet(50, 4, "steady")
 
-#asetukset = {"aggressiivisuus": 1}
+asetukset = {"aggressiivisuus": 2}
 #testaaPanostusta(500, 4, "random", asetukset)  #Huom tämä pelaa sen kierroksen, joten kun tulee raiseja niin muiden mahdollisuus muuttuu
-#testaaPanostusta(5, 4, "montecarlo", asetukset)  
+#testaaPanostusta(50, 4, "montecarlo", asetukset, kierros=2, vaihdetaan=True)  #voi lisätä kierros=2, oletus 1 | vaihdetaan=True, oletus false
 
 asetukset = [{"aggressiivisuus": 1}, {"aggressiivisuus": 2}, {"aggressiivisuus": 3}, {"aggressiivisuus": 3}]
 ai_type = ["montecarlo", "montecarlo", "montecarlo", "random"]
@@ -193,4 +206,4 @@ for i in range(4):
     nimi = f"Tietokone {i+1}"
     pelaajat.append(Pelaaja(nimi, "Tietsikka", AI_valinta=ai_type[i], AI_asetukset=asetukset[i]))
 
-tilastoiVoitot(1000, pelaajat)
+#tilastoiVoitot(10, pelaajat)

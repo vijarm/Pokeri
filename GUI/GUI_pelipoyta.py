@@ -1,203 +1,7 @@
 import pygame
 from . import settings
+from random import randint
 
-#Tää koko höskä nostetaan class GUI sisään, jossa initissä syötetään pelaaja, ja aletaan sijottamaan pelaaja.nakymaa
-
-'''oo. Tässä kannattaa muistaa yksi hyvin yksinkertainen kaava:
-
-nappi = Rect + piirto + hiiren osuman tarkistus + toiminto.
-
-Tavallinen nappi
-button_rect = pygame.Rect(500, 500, 120, 50)
-
-
-def draw_button(screen, rect, text, selected=False):
-
-    # Väri vaihtuu valinnan mukaan
-    if selected:
-        color = (220, 180, 50)       # highlight
-    else:
-        color = (60, 70, 70)
-
-    pygame.draw.rect(
-        screen,
-        color,
-        rect,
-        border_radius=8
-    )
-
-    pygame.draw.rect(
-        screen,
-        (255, 255, 255),
-        rect,
-        width=2,
-        border_radius=8
-    )
-
-    text_surface = font.render(
-        text,
-        True,
-        (255, 255, 255)
-    )
-
-    text_rect = text_surface.get_rect(
-        center=rect.center
-    )
-
-    screen.blit(
-        text_surface,
-        text_rect
-    )
-
-Event-loopissa:
-
-for event in pygame.event.get():
-
-    if event.type == pygame.MOUSEBUTTONDOWN:
-
-        if button_rect.collidepoint(event.pos):
-
-            # TÄHÄN napin toiminto
-            print("CALL painettu")
-
-Eli myöhemmin:
-
-if button_rect.collidepoint(event.pos):
-    return 1
-
-ja Engine saa 1.
-
-Useampi nappi
-call_rect = pygame.Rect(400, 500, 100, 45)
-raise_rect = pygame.Rect(510, 500, 100, 45)
-fold_rect = pygame.Rect(620, 500, 100, 45)
-
-if event.type == pygame.MOUSEBUTTONDOWN:
-
-    if call_rect.collidepoint(event.pos):
-        return 1
-
-    elif raise_rect.collidepoint(event.pos):
-        return 2
-
-    elif fold_rect.collidepoint(event.pos):
-        return 4
-
-Kortin selected-tila
-Tämä on käytännössä sama mekanismi.
-
-Kortilla on Rect:
-
-card_rect = pygame.Rect(
-    500,
-    600,
-    78,
-    108
-)
-
-Ja oma tila:
-
-selected = False
-
-Piirretään kortti eri tavalla riippuen tilasta:
-
-if selected:
-    border_color = (230, 190, 40)
-    border_width = 5
-else:
-    border_color = (20, 20, 20)
-    border_width = 2
-
-
-pygame.draw.rect(
-    screen,
-    (255, 255, 255),
-    card_rect,
-    border_radius=7
-)
-
-pygame.draw.rect(
-    screen,
-    border_color,
-    card_rect,
-    width=border_width,
-    border_radius=7
-)
-
-Klikkaus vaihtaa tilan:
-
-if event.type == pygame.MOUSEBUTTONDOWN:
-
-    if card_rect.collidepoint(event.pos):
-
-        selected = not selected
-
-Nyt:
-
-ei valittu:
-
-┌─────────┐
-│         │
-│    A♠   │
-│         │
-└─────────┘
-
-
-valittu:
-
-╔═════════╗
-║         ║
-║   A♠    ║
-║         ║
-╚═════════╝
-    ↑
- highlight
-
-Usealle kortille
-Tämä on sinun pokeripelissäsi olennaisin:
-
-selected_cards = []
-
-Klikattaessa:
-
-if card_rect.collidepoint(event.pos):
-
-    if card in selected_cards:
-        selected_cards.remove(card)
-    else:
-        selected_cards.append(card)
-
-Ja piirtäessä:
-
-selected = card in selected_cards
-
-draw_card(
-    screen,
-    card,
-    rect,
-    selected=selected
-)
-
-Kun VAIHDA painetaan:
-
-if vaihda_rect.collidepoint(event.pos):
-
-    return selected_cards
-
-Eli tämän voi oikeastaan muistaa yhtenä kaavana:
-
-PIIRRÄ
-  ↓
-Rect
-  ↓
-TARKISTA:
-collidepoint(event.pos)
-  ↓
-MUUTA TILAA / SUORITA TOIMINTO
-  ↓
-SEURAAVA FRAME PIIRTÄÄ UUDEN TILAN
-
-Tuo viimeinen kohta on Pygamessa tärkeä: et yleensä "muokkaa ruudulla olevaa nappia". Muutat esimerkiksi selected = True, ja seuraavalla renderöintikierroksella nappi/kortti piirretään highlightattuna.'''
 
 
 # ============================================================
@@ -214,442 +18,35 @@ CENTER_LEFT = SIDE_WIDTH
 CENTER_RIGHT = WIDTH - SIDE_WIDTH
 CENTER_WIDTH = CENTER_RIGHT - CENTER_LEFT
 
+DECK_X = 785
+DECK_Y = 320
+
+
+#Korttien kuvien x,y sijainti sheetissä
+MAA_RIVIT = {
+    "PATA": 0,
+    "RISTI": 1,
+    "HERTTA": 2,
+    "RUUTU": 3,
+    "muu": 4
+}
+
+NUMERO_SARAKKEET = {
+    14: 0,
+    2: 1,
+    3: 2,
+    4: 3,
+    5: 4,
+    6: 5,
+    7: 6,
+    8: 7,
+    9: 8,
+    10: 9,
+    11: 10,
+    12: 11,
+    13: 12
+}
 
-# ============================================================
-# VÄRIT
-# ============================================================
-
-TABLE_GREEN = settings.TABLE_GREEN
-TABLE_DARK = settings.TABLE_DARK
-
-PANEL_COLOR = settings.PANEL_COLOR
-PANEL_DARK = settings.PANEL_DARK
-
-WHITE = settings.WHITE
-BLACK = settings.BLACK
-GRAY = settings.GRAY
-LIGHT_GRAY = settings.LIGHT_GRAY
-
-GOLD = settings.GOLD
-
-small_font = settings.small_font
-font = settings.font
-medium_font = settings.medium_font
-large_font = settings.large_font
-title_font = settings.title_font
-
-
-
-
-def GUI_pelipoyta(screen, valintapaneeli, pelaaja):
-    
-    nakyma = pelaaja  #Gui siis lähettää suoraan pelaaja.nakyma, jossa on kaikki piirtoon tarvittavat data
-
-
-    pygame.display.set_caption(
-        "POKERISIMULAATTORI"
-    )
-
-    screen.fill(TABLE_GREEN)
-
-
-    draw_top_bar(
-        screen,
-        nakyma
-    )
-
-    draw_bottom_player(  #Oma pelaaja
-        screen,
-        nakyma,
-        valintapaneeli
-    )
-
-    draw_side_player(
-        screen,
-        nakyma.muutPelaajat[0],
-        "left"
-    )
-
-    draw_top_player(
-        screen,
-        nakyma.muutPelaajat[1]
-    )
-
-    draw_side_player(
-        screen,
-        nakyma.muutPelaajat[2],
-        "right"
-    )
-
-    draw_center_area(
-        screen,
-        nakyma
-    )
-
-    valintapaneeli.draw(  #Aktiivinen valintapaneeli, valinnat pelitilanteen mukaan
-        screen
-    )
-
-'''
-    gui_nakyma = {
-
-        "kierros": nakyma.kierros,
-        "vaihe": "nakyma.pelivaihe",
-        "jakaja": "nakyma.jakaja",
-
-        "potti": nakyma.potti,
-        "korotus": nakyma.suurinKorotus,
-
-        "pelaajat": [
-
-            # ----------------------------------------------------
-            # P1 = aktiivinen / ihmispelaaja
-            # ----------------------------------------------------
-
-            {
-                "nimi": nakyma.nimi,
-                "chips": nakyma.chips,
-                "maksettuJakoon": nakyma.maksettuJakoon,
-                "valinta": nakyma.valinta,
-                "kortit": nakyma.kasikortit,
-                "vuorossa": True,
-            },
-
-            # ----------------------------------------------------
-            # P2 = vasen
-            # ----------------------------------------------------
-
-            {
-                "nimi": muutPelaajat[0].nimi,
-                "chips": muutPelaajat[0].chips,
-                "maksettuJakoon": muutPelaajat[0].maksettuJakoon,
-                "valinta": "Raise",
-                "kortit": ["?", "?", "?", "?", "?"],
-                "vuorossa": False,
-            },
-
-            # ----------------------------------------------------
-            # P3 = ylhäällä
-            # ----------------------------------------------------
-
-            {
-                "nimi": muutPelaajat[1].nimi,
-                "chips": muutPelaajat[1].chips,
-                "maksettuJakoon": muutPelaajat[1].maksettuJakoon,
-                "valinta": "Raise",
-                "kortit": ["?", "?", "?", "?", "?"],
-                "vuorossa": False,
-            },
-
-            # ----------------------------------------------------
-            # P4 = oikealla
-            # ----------------------------------------------------
-
-            {
-                "nimi": muutPelaajat[2].nimi,
-                "chips": muutPelaajat[2].chips,
-                "maksettuJakoon": muutPelaajat[2].maksettuJakoon,
-                "valinta": "Raise",
-                "kortit": ["?", "?", "?", "?", "?"],
-                "vuorossa": False,
-            },
-        ],
-
-        "log": [
-            "Kortit jaettu.",
-            "Pelaaja 2 maksaa 20.",
-            "Pelaaja 3 maksaa 20.",
-            "Pelaaja 4 korottaa 20.",
-            "Pelaaja 1 maksaa 40.",
-        ],
-    }
-    '''
-
-
-# ============================================================
-# APUTOIMINNOT
-# ============================================================
-
-def draw_text(
-    surface,
-    text,
-    position,
-    font_object=font,
-    color=WHITE
-):
-    rendered = font_object.render(
-        str(text),
-        True,
-        color
-    )
-
-    surface.blit(
-        rendered,
-        position
-    )
-
-
-def draw_centered_text(
-    surface,
-    text,
-    center,
-    font_object=font,
-    color=WHITE
-):
-    rendered = font_object.render(
-        str(text),
-        True,
-        color
-    )
-
-    rect = rendered.get_rect(
-        center=center
-    )
-
-    surface.blit(
-        rendered,
-        rect
-    )
-
-
-def draw_panel(
-    surface,
-    rect,
-    border_color=LIGHT_GRAY
-):
-    pygame.draw.rect(
-        surface,
-        PANEL_COLOR,
-        rect,
-        border_radius=8
-    )
-
-    pygame.draw.rect(
-        surface,
-        border_color,
-        rect,
-        width=2,
-        border_radius=8
-    )
-
-
-# ============================================================
-# YLÄPALKKI
-# ============================================================
-
-def draw_top_bar(
-    surface,
-    nakyma
-):
-
-    pygame.draw.rect(
-        surface,
-        PANEL_DARK,
-        (0, 0, WIDTH, TOP_BAR_HEIGHT)
-    )
-
-    draw_text(
-        surface,
-        "5 CARD DRAW TESTITESTINEN",
-        (18, 13),
-        title_font
-    )
-
-    draw_text(
-        surface,
-        f"Jako {nakyma.kierros}",
-        (400, 17)
-    )
-
-    draw_text(
-        surface,
-        f"Pelivaihe: {PELIVAIHE[nakyma.pelivaihe]}",
-        (515, 17)
-    )
-
-    draw_text(
-        surface,
-        f"Jakaja: {nakyma.jakaja}",
-        (790, 17)
-    )
-
-
-# ============================================================
-# PELAAJAPANEELI
-# ============================================================
-
-def draw_player_panel(
-    surface,
-    pelaaja,
-    rect
-):
-    border_color = (
-        GOLD
-        if pelaaja.aktiivinen  # OIKEESTI pitää lisätä joku vuorossa tägi pelaajille
-        else LIGHT_GRAY
-    )
-
-    draw_panel(
-        surface,
-        rect,
-        border_color
-    )
-
-    draw_text(
-        surface,
-        pelaaja.nimi,
-        (
-            rect.x + 10,
-            rect.y + 8
-        ),
-        medium_font
-    )
-
-    draw_text(
-        surface,
-        f"Chips: {pelaaja.chips}",
-        (
-            rect.x + 10,
-            rect.y + 37
-        ),
-        small_font
-    )
-
-    draw_text(
-        surface,
-        f"Potissa: {pelaaja.maksettuJakoon}",
-        (
-            rect.x + 10,
-            rect.y + 57
-        ),
-        small_font
-    )
-
-    draw_text(
-        surface,
-        VALINNAT[pelaaja.valinta],  #Pitää vähän suomentaa valintoja numeroista
-        (
-            rect.x + 10,
-            rect.y + 77
-        ),
-        small_font
-    )
-
-    if pelaaja.aktiivinen:  #TÄHÄN SE VUOROSSA TÄGI
-
-        draw_text(
-            surface,
-            "● VUOROSSA",
-            (
-                rect.x + 10,
-                rect.bottom - 20
-            ),
-            small_font,
-            GOLD
-        )
-
-
-# ============================================================
-# KORTTI
-# ============================================================
-
-def create_card_surface(
-    card,
-    width,
-    height,
-    selected=False
-):
-    card_surface = pygame.Surface(
-        (width, height),
-        pygame.SRCALPHA
-    )
-
-    pygame.draw.rect(
-        card_surface,
-        WHITE,
-        (0, 0, width, height),
-        border_radius=7
-    )
-
-    border_color = (
-        GOLD
-        if selected
-        else BLACK
-    )
-
-    border_width = (
-        4
-        if selected
-        else 2
-    )
-
-    pygame.draw.rect(
-        card_surface,
-        border_color,
-        (0, 0, width, height),
-        width=border_width,
-        border_radius=7
-    )
-
-    draw_centered_text(
-        card_surface,
-        card,
-        (width // 2, height // 2),
-        medium_font,
-        BLACK
-    )
-
-    return card_surface
-
-
-def draw_card(
-    surface,
-    card,
-    center,
-    width,
-    height,
-    rotation=0,
-    selected=False
-):
-    card_surface = create_card_surface(
-        card,
-        width,
-        height,
-        selected
-    )
-
-    if rotation != 0:
-
-        card_surface = pygame.transform.rotate(
-            card_surface,
-            rotation
-        )
-
-    rect = card_surface.get_rect(
-        center=center
-    )
-
-    surface.blit(
-        card_surface,
-        rect
-    )
-
-    return rect
-
-
-# ============================================================
-# YLÄPELIN / ALAPELIN YHTEINEN MITOITUS
-# ============================================================
-#
-# Näin P1 ja P2 saadaan varmasti samalle vaakasuuntaiselle
-# keskiviivalle.
-#
-# Kokonaisuus:
-#
-#   INFO | kortit
-#
-# on yhtä leveä sekä ylhäällä että alhaalla.
-# ============================================================
 
 CARD_WIDTH = 78
 CARD_HEIGHT = 108
@@ -677,317 +74,474 @@ PLAYER_GROUP_LEFT = (
 )
 
 
+
 # ============================================================
-# P2 — YLÄPELAAJA
+# VÄRIT
 # ============================================================
 
-def draw_top_player(
-    surface,
-    pelaaja
-):
+TABLE_GREEN = settings.TABLE_GREEN
+TABLE_DARK = settings.TABLE_DARK
 
-    # --------------------------------------------------------
-    # Sama kokonaisleveys kuin P1:llä.
-    # --------------------------------------------------------
+PANEL_COLOR = settings.PANEL_COLOR
+PANEL_DARK = settings.PANEL_DARK
 
-    panel_x = PLAYER_GROUP_LEFT
+WHITE = settings.WHITE
+BLACK = settings.BLACK
+GRAY = settings.GRAY
+LIGHT_GRAY = settings.LIGHT_GRAY
 
-    cards_x = (
-        panel_x
-        + PLAYER_PANEL_WIDTH
-        + 25
-    )
+RED = settings.RED
+BLUE = settings.BLUE
+LIGHT_BLUE = settings.LIGHT_BLUE
+GOLD = settings.GOLD
+TURKOOSI = settings.TURKOOSI
+ORANSSI = settings.ORANSSI
 
-    # P2:n paneeli
-    panel_rect = pygame.Rect(
-        panel_x,
-        68,
-        PLAYER_PANEL_WIDTH,
-        PLAYER_PANEL_HEIGHT
-    )
+small_font = settings.small_font
+font = settings.font
+medium_font = settings.medium_font
+large_font = settings.large_font
+title_font = settings.title_font
 
-    draw_player_panel(
-        surface,
-        pelaaja,
-        panel_rect
-    )
 
-    # --------------------------------------------------------
-    # P2:n kortit
-    # --------------------------------------------------------
 
-    for i, card in enumerate(
-        ["??", "??", "??", "??", "??"]   #TÄHÄN JOKU LINKKI tai cardcount pelaajalle tms, vai geneerisesti vaan
-    ):
+class GUI_pelipoyta:
 
-        x = (
-            cards_x
-            + i * (CARD_WIDTH + CARD_GAP)
-            + CARD_WIDTH // 2
+    def __init__(self, screen, nakyma, kortit_sheet):
+        self.screen = screen
+        self.kortit_sheet = kortit_sheet
+        self.nakyma = nakyma
+        self.valintapaneeli = ValintaPaneeli(nakyma, kortit_sheet)
+        self.animaatiot = []
+
+    def handle_event(self, event):
+        self.valintapaneeli.handle_event(event)
+
+    def asetaNakyma(self, uusinakyma):
+        self.nakyma = uusinakyma
+        self.valintapaneeli.nakyma = uusinakyma
+
+    def handle_tapahtuma(self, tapahtuma):
+        if tapahtuma["tapahtuma"] == "fold_voitto":
+            self.valintapaneeli.mode = "fold_voitto"
+
+        if tapahtuma["tapahtuma"] == "jaaKortit":
+            self.valintapaneeli.mode = "odottaa"
+            self.jaaKortit()
+
+        if tapahtuma["tapahtuma"] == "panostus":
+
+            #self.valintapaneeli.mode = "odottaa"  Sitten kun toimii seuraavat stepit samalla logiikalla
+            if tapahtuma["valinta"] == 4:  #fold
+                self.foldaa(tapahtuma["pelaaja"])
+            else:
+                self.ilmoita(tapahtuma["pelaaja"], tapahtuma["ilmoitus"])
+
+        if tapahtuma["tapahtuma"] == "pyydaPanos":
+            if tapahtuma["pelaaja"] == self.nakyma.nimi:
+                self.valintapaneeli.mode = "panostus"
+            else:
+                self.valintapaneeli.mode = "odottaa"
+
+        if tapahtuma["tapahtuma"] == "ilmoitus":
+            #self.valintapaneeli.mode = "odottaa"   Sitten kun toimii seuraavat stepit samalla logiikalla
+            self.ilmoita(tapahtuma["pelaaja"], tapahtuma["ilmoitus"])
+
+
+                                       
+    def draw(self):
+        
+        pygame.display.set_caption(
+            "POKERISIMULAATTORI"
         )
 
-        draw_card(
-            surface,
-            card,
-            (
-                x,
-                121
-            ),
-            CARD_WIDTH,
-            CARD_HEIGHT
-        )
+        self.screen.fill(TABLE_DARK)
+
+        self.draw_top_bar()
+
+        self.draw_bottom_player()
+
+        self.draw_side_player("left")
+
+        self.draw_top_player()
+
+        self.draw_side_player("right")
+
+        self.draw_center_area()
+
+        self.valintapaneeli.draw(self.screen) #Valintapaneelin oma sisältö muuttuu pelitilanteen mukaan
+
+        for animaatio in self.animaatiot:
+            animaatio.draw()
 
 
-# ============================================================
-# SIVUPELAAJAT
-# ============================================================
+    def get_kortin_paikka(self, pelaaja, index):  #palauttaa ((sijainti x, sijainti y), rotaatio)
 
-def draw_side_player(
-    surface,
-    pelaaja,
-    side
-):
-    """
-    P3/P4:
+        if pelaaja == self.nakyma:  #oma pelaaja
+            start_x = (PLAYER_GROUP_LEFT + PLAYER_PANEL_WIDTH + 25)
+            x = (start_x + index * (CARD_WIDTH + CARD_GAP) + CARD_WIDTH // 2)
+            y = 658
+            return ((x, y), 0)
 
-    Kortit ovat täysin saman kokoisia kuin P1/P2:n kortit.
+        elif pelaaja == self.nakyma.muutPelaajat[0]:
+            x = (SIDE_WIDTH // 2)
+            y = (230 + index * 80)
+            return ((x, y), 90)
 
-    Pyörityksen jälkeen niiden pystysuuntainen koko on
-    CARD_WIDTH = 78 px.
+        elif pelaaja == self.nakyma.muutPelaajat[1]:
+            start_x = (PLAYER_GROUP_LEFT + PLAYER_PANEL_WIDTH + 25)
+            x = (start_x + index * (CARD_WIDTH + CARD_GAP) + CARD_WIDTH // 2)
+            y = 121
+            return ((x, y), 0)
 
-    Step = 80 px -> vain 2 px visuaalinen väli.
-    """
+        elif pelaaja == self.nakyma.muutPelaajat[2]:
+            x = (WIDTH - SIDE_WIDTH // 2)
+            y = (230 + index * 80)
+            return ((x, y), 270)
 
-    if side == "left":
+        else:
+            raise ValueError("Virheellinen pelaajavalinta")
 
-        panel_x = 15
 
-        card_x = (
-            SIDE_WIDTH // 2
-        )
+    def draw_top_player(self):
+        surface = self.screen
+        pelaaja = self.nakyma.muutPelaajat[1]
+        kortit_sheet = self.kortit_sheet
 
-        rotation = 90
+        panel_x = PLAYER_GROUP_LEFT
 
+        #Pelaajapaneeli
+        panel_rect = pygame.Rect(panel_x, 68, PLAYER_PANEL_WIDTH, PLAYER_PANEL_HEIGHT)
+
+        draw_player_panel(surface, pelaaja, panel_rect)
+
+        # Kortit
+        if pelaaja.aktiivinen and not pelaaja.folded and not pelaaja.kasikortit == None:
+            kortit = pelaaja.kasikortit
+            for i, card in enumerate(kortit):
+
+                sijainti, rotation = self.get_kortin_paikka(pelaaja, i)
+
+                draw_card(surface, card, sijainti, CARD_WIDTH, CARD_HEIGHT, kortit_sheet)
+
+
+    def draw_side_player(self, side):
+
+        surface = self.screen
+        if side == "left":
+            pelaaja = self.nakyma.muutPelaajat[0]
+        else:
+            pelaaja = self.nakyma.muutPelaajat[2]
+
+        kortit_sheet = self.kortit_sheet
+
+        if side == "left":
+            panel_x = 15
+
+        else:
+            panel_x = (WIDTH - SIDE_WIDTH + 15)
+
+        #Pelaajapaneeli
+        panel_rect = pygame.Rect(panel_x, 75, 160, 105)
+
+        draw_player_panel(surface, pelaaja, panel_rect)
+
+        #Kortit
+        if pelaaja.aktiivinen and not pelaaja.folded and not pelaaja.kasikortit == None:
+            kortit = pelaaja.kasikortit
+            for i, card in enumerate(
+                kortit   
+            ):
+                sijainti, rotation = self.get_kortin_paikka(pelaaja, i)
+
+                draw_card(surface, card, sijainti, CARD_WIDTH, CARD_HEIGHT, kortit_sheet, rotation=rotation)
+
+    def draw_bottom_player(self):  #Oma pelaaja
+
+        surface = self.screen
+        pelaaja = self.nakyma
+        valintapaneeli = self.valintapaneeli
+        kortit_sheet = self.kortit_sheet
+
+        #Pelaajapaneeli
+        panel_x = PLAYER_GROUP_LEFT
+
+        panel_rect = pygame.Rect(panel_x, 605, PLAYER_PANEL_WIDTH, PLAYER_PANEL_HEIGHT)
+
+        draw_player_panel(surface, pelaaja, panel_rect)
+
+        #Kortit
+        if pelaaja.aktiivinen:
+            for i, kortti in enumerate(pelaaja.kasikortit):
+
+                selected = i in valintapaneeli.valitutKortit
+
+                sijainti, rotation = self.get_kortin_paikka(pelaaja, i)
+
+                if selected:  # Nostetaan valittuja kortteja
+                    sijainti = (sijainti[0], sijainti[1] - 10)
+
+                rect = draw_card(surface, kortti, sijainti, CARD_WIDTH, CARD_HEIGHT, kortit_sheet, selected=selected)
+
+                valintapaneeli.kortti_rectit[i] = rect
+
+    #Keskialue, logi ym muut lisätietoikkunat
+    def draw_center_area(self):
+        surface = self.screen
+        nakyma = self.nakyma
+        kortit_sheet = self.kortit_sheet
+
+        #Logi, noin 5 riviä tekstiä (lisää? scroll bar?)
+        log_height = 105
+        log_bottom = 712
+
+        log_rect = pygame.Rect(15, log_bottom - log_height, 270, log_height)
+
+        draw_panel(surface, log_rect)
+
+        messages = nakyma.log[-5:]  # 5 uusinta merkintää näkyy
+
+        y = log_rect.y + 10
+
+        for message in reversed(messages):
+
+            draw_text(surface, message, (log_rect.x + 10, y), small_font)
+            y += 18
+
+        #Potti info
+        pot_x = 620
+        pot_y = 300
+
+        draw_centered_text(surface, "POTTI", (pot_x, pot_y), medium_font)
+
+        draw_centered_text(surface, nakyma.potti, (pot_x, pot_y + 38), large_font, GOLD)
+
+        draw_centered_text(surface,
+            f"Suurin korotus: {nakyma.suurinKorotus}",
+            (pot_x, pot_y + 72), small_font, GRAY)
+
+        #Pakka
+        deck_x = DECK_X
+        deck_y = DECK_Y
+
+        for offset in [8, 4, 0]:
+
+            draw_card(surface, "alaspain", (deck_x + offset, deck_y + offset), 78, 108, kortit_sheet)
+
+        draw_centered_text(surface,
+            "PAKKA",
+            (deck_x, deck_y + 72), small_font)
+    
+    #Yläpalkki, vähemmän relevanttia infoa
+    def draw_top_bar(self):
+        surface = self.screen
+        nakyma = self.nakyma
+
+        pygame.draw.rect(surface, PANEL_DARK, (0, 0, WIDTH, TOP_BAR_HEIGHT) )
+
+        draw_text(surface,
+            "MARKKAPOKERI",
+            (18, 13), title_font)
+
+        draw_text(surface,
+            f"Jako {nakyma.kierros}",
+            (400, 17) )
+
+        draw_text(surface,
+            f"Pelivaihe: {PELIVAIHE[nakyma.pelivaihe]}",
+            (515, 17) )
+
+        draw_text(surface,
+            f"Jakaja: {nakyma.jakaja}",
+            (790, 17) )
+
+
+    #Animaatiofunktiot
+
+    def jaaKortit(self):
+        jakoAnimaatio = Korttijako(self)
+        jakoAnimaatio.aloitaJako()
+        self.animaatiot.append(jakoAnimaatio)
+
+
+    def foldaa(self, pelaaja):
+        foldAnimaatio = FoldAnimaatio(self, pelaaja)
+        foldAnimaatio.aloita()
+        self.animaatiot.append(foldAnimaatio)
+        self.animaatiot.append(Ilmoitus(self, self.haePelaajanPaikka(pelaaja), "FOLDAAN"))
+
+    def ilmoita(self, pelaaja, teksti):
+        self.animaatiot.append(Ilmoitus(self, self.haePelaajanPaikka(pelaaja), teksti))
+
+        
+    def haePelaajanPaikka(self, pelaaja):  #Hakee nimen perusteella pelaajan paikan (0 = bottom, 1 = left, 2 = top, 3 = right)
+        pelaajat = [self.nakyma] + self.nakyma.muutPelaajat
+        pelaajaIndex = pelaajat.index(next(p for p in pelaajat if p.nimi == pelaaja))
+        return pelaajaIndex
+
+                        
+
+        
+
+
+
+# Piirtämisen apufunktiot
+
+def draw_text(surface, text, position, font_object=font, color=WHITE):
+
+    rendered = font_object.render(str(text), True, color)
+    surface.blit(rendered, position)
+
+
+def draw_centered_text(surface, text, center, font_object=font, color=WHITE):
+
+    rendered = font_object.render(str(text), True, color)
+    rect = rendered.get_rect(center=center)
+    surface.blit(rendered, rect)
+
+
+def draw_panel(surface, rect, border_color=LIGHT_GRAY, border_width=2):
+
+    pygame.draw.rect(surface, PANEL_COLOR, rect, border_radius=8)
+
+    pygame.draw.rect(surface, border_color, rect, width=border_width, border_radius=8)
+
+
+#Pelaajapaneeli
+
+def draw_player_panel(surface, pelaaja, rect):
+
+    if pelaaja.allin:
+        border_color = TURKOOSI
+    elif not pelaaja.aktiivinen:
+        border_color = GRAY
+    elif pelaaja.folded:
+        border_color = LIGHT_GRAY
+    elif pelaaja.valinta == 2 or pelaaja.valinta == 3:
+        border_color = RED
     else:
+        border_color = GOLD
 
-        panel_x = (
-            WIDTH
-            - SIDE_WIDTH
-            + 15
-        )
+    if pelaaja.folded:
+        tila = "Luovuttanut"
+    elif pelaaja.allin:
+        tila ="All-in"
+    else:
+        tila = VALINNAT[pelaaja.valinta]
 
-        card_x = (
-            WIDTH
-            - SIDE_WIDTH // 2
-        )
+    draw_panel(surface, rect, border_color, border_width = 3)
 
-        rotation = 270
+    draw_text(surface, pelaaja.nimi, (rect.x + 10, rect.y + 8), medium_font)
 
-    # --------------------------------------------------------
-    # Pelaajapaneeli
-    # --------------------------------------------------------
+    draw_text(surface, f"Chips: {pelaaja.chips}", (rect.x + 10, rect.y + 31), medium_font)
 
-    panel_rect = pygame.Rect(
-        panel_x,
-        75,
-        160,
-        105
-    )
+    if pelaaja.aktiivinen:
 
-    draw_player_panel(
-        surface,
-        pelaaja,
-        panel_rect
-    )
+        draw_text(surface,
+            f"Potissa: {pelaaja.maksettuJakoon}",
+            (rect.x + 10, rect.y + 57), small_font)
 
-    # --------------------------------------------------------
-    # Sivukortit
-    # --------------------------------------------------------
+        draw_text(surface,
+            tila,  
+            (rect.x + 10, rect.y + 77), small_font)
 
-    vertical_step = 80
+    else: 
 
-    start_y = 230
+        draw_text(surface,
+            "Tippunut pelistä",
+            (rect.x + 10, rect.y + 57), small_font)
 
-    for i, card in enumerate(
-        ["??", "??", "??", "??", "??"]   #TÄHÄN JOKU LINKKI tai cardcount pelaajalle tms, vai geneerisesti vaan
-    ):
+    if pelaaja.aktiivinen:  #TÄHÄN SE VUOROSSA TÄGI, tai kokonaan veks
 
-        y = (
-            start_y
-            + i * vertical_step
-        )
-
-        draw_card(
-            surface,
-            card,
-            (
-                card_x,
-                y
-            ),
-            CARD_WIDTH,
-            CARD_HEIGHT,
-            rotation=rotation
-        )
+        draw_text(surface,
+            "● VUOROSSA",
+            (rect.x + 10, rect.bottom - 20), small_font, GOLD)
 
 
 # ============================================================
-# KESKIALUE
+# KORTTI
 # ============================================================
 
-def draw_center_area(
-    surface,
-    nakyma
-):
+def create_card_surface(kortti, width, height, kortit_sheet, selected=False):
+    kortin_kuva = get_kortin_kuva(kortti, kortit_sheet)
+    
+    card_surface = pygame.Surface( (width, height), pygame.SRCALPHA)
 
-    # --------------------------------------------------------
-    # LOGI
-    # --------------------------------------------------------
-    #
-    # Vain noin 5 riviä näkyviin.
-    # Myöhemmin tähän scrollbar.
-    # --------------------------------------------------------
+    card_surface.blit(kortin_kuva, (0, 0))  # Piirretään kortin kuva
 
-    log_height = 105
-    log_bottom = 712
+    # Pyöristetään kortin kulmat läpinäkyvällä
+    mask = pygame.Surface( (width, height), pygame.SRCALPHA)  
 
-    log_rect = pygame.Rect(
-        15,
-        log_bottom - log_height,
-        270,
-        log_height
+    pygame.draw.rect(mask, (255, 255, 255, 255), (0, 0, width, height), border_radius=7)
+
+    card_surface.blit(mask, (0, 0), special_flags=pygame.BLEND_RGBA_MIN)
+
+    border_color = (ORANSSI if selected
+        else BLACK)
+
+    border_width = (4 if selected
+        else 2)
+
+    pygame.draw.rect(card_surface, border_color, (0, 0, width, height), width=border_width, border_radius=7)
+    
+    return card_surface
+
+
+def draw_card(surface, kortti, center, width, height, kortit_sheet, rotation=0, selected=False):
+    card_surface = create_card_surface(kortti, width, height, kortit_sheet, selected)
+
+    if rotation != 0:
+        card_surface = pygame.transform.rotate(card_surface, rotation)
+
+    rect = card_surface.get_rect(center=center)
+
+    surface.blit(card_surface, rect)
+
+    return rect
+
+
+def get_kortin_kuva(kortti, kortit_sheet, tausta=2):  
+
+    if kortti == "alaspain" or kortti.alaspain == True:  #Väärinpäin olevat kortit
+        y = MAA_RIVIT["muu"] * CARD_HEIGHT
+        x = NUMERO_SARAKKEET[tausta] * CARD_WIDTH
+    else:
+        y = MAA_RIVIT[kortti.maa] * CARD_HEIGHT
+        x = NUMERO_SARAKKEET[kortti.numero] * CARD_WIDTH
+
+    rect = pygame.Rect(
+        x,
+        y,
+        CARD_WIDTH,
+        CARD_HEIGHT
     )
 
-    draw_panel(
-        surface,
-        log_rect
-    )
+    return kortit_sheet.subsurface(rect)
 
-    draw_text(
-        surface,
-        "Tapahtumat",
-        (
-            log_rect.x + 12,
-            log_rect.y - 10
-        ),
-        medium_font
-    )
 
-    messages = nakyma.log[-5:]
-
-    y = log_rect.y + 10
-
-    for message in reversed(messages):
-
-        draw_text(
-            surface,
-            message,
-            (
-                log_rect.x + 10,
-                y
-            ),
-            small_font
-        )
-
-        y += 18
-
-    # --------------------------------------------------------
-    # POTTI
-    # --------------------------------------------------------
-
-    pot_x = 620
-    pot_y = 300
-
-    draw_centered_text(
-        surface,
-        "POTTI",
-        (
-            pot_x,
-            pot_y
-        ),
-        medium_font
-    )
-
-    draw_centered_text(
-        surface,
-        nakyma.potti,
-        (
-            pot_x,
-            pot_y + 38
-        ),
-        large_font,
-        GOLD
-    )
-
-    draw_centered_text(
-        surface,
-        f"Suurin korotus: {nakyma.suurinKorotus}",
-        (
-            pot_x,
-            pot_y + 72
-        ),
-        small_font,
-        GRAY
-    )
-
-    # --------------------------------------------------------
-    # PAKKA
-    # --------------------------------------------------------
-
-    deck_x = 785
-    deck_y = 320
-
-    for offset in [8, 4, 0]:
-
-        rect = pygame.Rect(
-            deck_x - 39 + offset,
-            deck_y - 54 + offset,
-            78,
-            108
-        )
-
-        pygame.draw.rect(
-            surface,
-            (35, 65, 110),
-            rect,
-            border_radius=7
-        )
-
-        pygame.draw.rect(
-            surface,
-            WHITE,
-            rect,
-            width=2,
-            border_radius=7
-        )
-
-    draw_centered_text(
-        surface,
-        "PAKKA",
-        (
-            deck_x,
-            deck_y + 72
-        ),
-        small_font
-    )
 
 
 # ============================================================
-# VALINTAPANEELI, TÄSSÄ TAPAHTUU PELAAJAN TÄRKEIMMÄT VALINNAT
+# VALINTAPANEELI, TÄSSÄ TAPAHTUU PELAAJAN VALINNAT
 # ============================================================
 
 class ValintaPaneeli:
 
-    def __init__(self, pelaaja):
+    def __init__(self, nakyma, kortit_sheet):
 
-        # Myöhemmin näkymästä:
-        #
-        # "waiting"
-        # "actions"
-        # "exchange"
-        # "continue"
+        # "panostus"
+        # "vaihdot"
+        # "showdown"
+        # "..."
+
+        self.left = 390
+        self.top = 465
+        self.width = 500
+        self.height = 120
         
-        self.pelaaja = pelaaja
+        self.nakyma = nakyma
         self.mode = "panostus"
+        self.kortit_sheet = kortit_sheet
 
         self.valinta: str | None = None
 
@@ -998,15 +552,15 @@ class ValintaPaneeli:
         self.jatketaan = None
 
         self.panostus_buttons = {
-            "maksa": pygame.Rect(475, 490, 90, 35),
-            "pieniKorotus": pygame.Rect(570, 490, 90, 35),
-            "suuriKorotus": pygame.Rect(665, 490, 90, 35),
-            "luovuta": pygame.Rect(760, 490, 90, 35),
+            "maksa": pygame.Rect(402, 540, 110, 35),
+            "pieniKorotus": pygame.Rect(524, 540, 110, 35),
+            "suuriKorotus": pygame.Rect(646, 540, 110, 35),
+            "luovuta": pygame.Rect(768, 540, 110, 35),
         }
 
-        self.vaihtoNappi_rect = pygame.Rect(620, 500, 100, 35)
+        self.vaihtoNappi_rect = pygame.Rect(585, 540, 110, 35)  #Yhdistetään napit, yksi OK??
 
-        self.jatkaNappi_rect = pygame.Rect(620, 500, 100, 35)
+        self.jatkaNappi_rect = pygame.Rect(585, 540, 110, 35)
 
 
     def handle_event(self, event):
@@ -1014,7 +568,10 @@ class ValintaPaneeli:
         if event.type != pygame.MOUSEBUTTONDOWN:
             return
 
-        if self.mode == "panostus":
+        if self.mode == "odottaa":
+            return
+
+        elif self.mode == "panostus":
 
             for valinta, rect in self.panostus_buttons.items():
 
@@ -1047,9 +604,15 @@ class ValintaPaneeli:
                 if self.jatkaNappi_rect.collidepoint(event.pos):
                     self.jatketaan = True
 
+        elif self.mode == "fold_voitto":
+
+            if event.type == pygame.MOUSEBUTTONDOWN:
+
+                if self.jatkaNappi_rect.collidepoint(event.pos):
+                    self.jatketaan = True
 
 
-    def get_valinta(self):
+    def get_valinta(self):  # TÄHÄN SISÄÄN voi laittaa sen, että kun vastaus hyväksytään niin siirtyy mode "odottaa". EN saanu aiemmin toimimaan?
 
         if self.mode == "panostus":
 
@@ -1071,52 +634,50 @@ class ValintaPaneeli:
 
             jatketaan = self.jatketaan
             self.jatketaan = None
+
+            if jatketaan is not None:
+                self.mode = "odottaa"
+
+            return jatketaan
+
+        if self.mode == "fold_voitto":
+
+            jatketaan = self.jatketaan
+            self.jatketaan = None
+
+            if jatketaan is not None:
+                self.mode = "odottaa"
             return jatketaan
 
                 
-    def draw(
-        self,
-        surface
-    ):
+    def draw(self, surface):
 
-        rect = pygame.Rect(
-            475,
-            455,
-            390,
-            80
-        )
+        rect = pygame.Rect(self.left, self.top, self.width, self.height)
 
-        draw_panel(
-            surface,
-            rect,
-            GOLD
-        )
+        draw_panel(surface, rect, GOLD)
 
-        if self.mode == "waiting":
+        if self.mode == "odottaa": 
 
-            draw_centered_text(
-                surface,
-                "Pelaaja 2:n vuoro",
-                (
-                    rect.centerx,
-                    rect.y + 25
-                ),
-                medium_font
-            )
+            draw_centered_text(surface,
+                "Pelaaja 2:n vuoro",  # vuorossa?
+                (rect.centerx, rect.y + 25), medium_font)
 
-            draw_centered_text(
-                surface,
-                "Odotetaan...",
-                (
-                    rect.centerx,
-                    rect.y + 55
-                ),
-                small_font,
-                GRAY
-            )
+            draw_centered_text(surface, 
+                "Odotetaan...",   
+                (rect.centerx, rect.y + 25), medium_font, GRAY)
 
         elif self.mode == "panostus":
-            for valinta, rect in self.panostus_buttons.items():
+
+            draw_centered_text(surface,
+                f"Maksettavaa: {self.nakyma.maksettavaa}",
+                (rect.centerx, rect.y + 30), medium_font)
+
+            draw_centered_text(surface,
+                f"Minimikorotus: {self.nakyma.panos}",
+                (rect.centerx, rect.y + 50), medium_font)
+
+
+            for valinta, rect in self.panostus_buttons.items():  #Napit
 
                 if self.valintaSallittu(valinta):  #Tarkistaa onko valinta mahdollinen
                     color = GOLD
@@ -1126,70 +687,54 @@ class ValintaPaneeli:
                     color = GRAY
                     text_color = LIGHT_GRAY
 
-                pygame.draw.rect(
-                    surface,
-                    color,
-                    rect
-                )
+                pygame.draw.rect(surface, color, rect)
 
-                draw_centered_text(
-                    surface,
-                    self.valintaTeksti(valinta),
-                    rect.center,
-                    font,
-                    text_color
-                )
+                draw_centered_text(surface, self.valintaTeksti(valinta), rect.center, font, text_color)
 
         elif self.mode == "vaihdot":
 
-            draw_centered_text(
-                surface,
+            draw_centered_text(surface,
                 "VALITSE VAIHDETTAVAT KORTIT",
-                (
-                    rect.centerx,
-                    rect.y + 20
-                ),
-                medium_font
-            )
+                (rect.centerx, rect.y + 30), large_font)
 
-            pygame.draw.rect(
-                surface, GOLD, self.vaihtoNappi_rect
-            )
+            pygame.draw.rect(surface, GOLD, self.vaihtoNappi_rect)
 
-            draw_centered_text(
-                surface,
-                "[ VAIHDA ]",
-                self.vaihtoNappi_rect.center,
-                font,
-                BLACK
-            )
+            draw_centered_text(surface,
+                "VAIHDA",
+                self.vaihtoNappi_rect.center, font, BLACK)
 
         elif self.mode == "showdown":
 
-            draw_centered_text(
-                surface,
-                "Käsien vertailu",
-                (
-                    rect.centerx,
-                    rect.y + 20
-                ),
-                medium_font
-            )
+            draw_centered_text(surface, 
+                "KÄSIEN VERTAILU", 
+                (rect.centerx, rect.y + 30), large_font)
 
-            pygame.draw.rect(
-                surface, GOLD, self.jatkaNappi_rect
-            )
+            pygame.draw.rect(surface, GOLD, self.jatkaNappi_rect)
 
-            draw_centered_text(
-                surface,
-                "[ JATKA ]",
-                self.jatkaNappi_rect.center,
-                font,
-                BLACK
-            )
+            draw_centered_text(surface, "JATKA", self.jatkaNappi_rect.center, font, BLACK)
 
-    def valintaSallittu(self, valinta):  #Tässä on nyt noita is not None tsekkejä, lopullisessa versiossa niitä ei tarvita mutta nyt gui alkaa panostuksesta. Normaalisti ne on olemassa kun gui panostus starttaa
-        nakyma = self.pelaaja.nakyma
+            if self.nakyma.showdown is not None:
+                self.piirraShowdown(surface)
+
+        elif self.mode == "fold_voitto":
+
+            voittaja = self.nakyma.showdown
+
+            draw_centered_text(surface,
+                "MUUT PELAAJAT LUOVUTTIVAT",
+                (rect.centerx, rect.y + 30), medium_font)
+
+            draw_centered_text(surface,
+                f"{voittaja["voittaja"].nimi} voitti {voittaja["potti"]} markkaa!",
+                (rect.centerx, rect.y + 50), medium_font)
+
+            pygame.draw.rect(surface, GOLD, self.jatkaNappi_rect)
+
+            draw_centered_text(surface, "JATKA", self.jatkaNappi_rect.center, font, BLACK)
+
+
+    def valintaSallittu(self, valinta):  #Lopullisessa versiossa noita None tsekkejä ei pitäisi tarvita
+        nakyma = self.nakyma
 
         if nakyma.maksettavaa is not None and nakyma.pieniKorotus is not None and nakyma.suuriKorotus is not None:
             if valinta == "maksa":  #Maksaminen on aina mahdollinen jos pelaajaa on kutsuttu panostuskierrokselle
@@ -1214,7 +759,7 @@ class ValintaPaneeli:
                     return False
 
     def valintaTeksti(self, valinta):
-        nakyma = self.pelaaja.nakyma
+        nakyma = self.nakyma
         if nakyma.maksettavaa is not None and nakyma.pieniKorotus is not None and nakyma.suuriKorotus is not None:
             if valinta == "maksa":
                 if nakyma.maksettavaa == 0:
@@ -1223,78 +768,190 @@ class ValintaPaneeli:
                     return f"Maksa {nakyma.maksettavaa}"
 
             if valinta == "pieniKorotus":
-                return f"Korota {nakyma.pieniKorotus} + maksa {nakyma.maksettavaa}\nYhteensä: {nakyma.pieniKorotus + nakyma.maksettavaa}"
+                return f"Korota {nakyma.pieniKorotus + nakyma.maksettavaa}"
             
             if valinta == "suuriKorotus":
-                return f"Korota {nakyma.suuriKorotus} + maksa {nakyma.maksettavaa}\nYhteensä: {nakyma.suuriKorotus + nakyma.maksettavaa}"
+                return f"Korota {nakyma.suuriKorotus + nakyma.maksettavaa}"
 
             if valinta == "luovuta":
                 return "Luovuta"
 
+    def piirraShowdown(self, surface):
+
+        rect = pygame.Rect(CENTER_LEFT + 80, TOP_BAR_HEIGHT + 150, CENTER_WIDTH - 160, 250)
+        
+        draw_panel(surface, rect, GOLD)
+
+        showdown = self.nakyma.showdown
+
+        kortit = showdown["kasikortit"]
+        kasi = showdown["kasinimi"]
+        voittaja = showdown["voittaja"]
+        voittopotti = showdown["potti"]
+        pottiajaljella = showdown["pottiaJaljella"]
+
+        draw_text(surface,
+            f"Voittaja: {voittaja}, voittokäsi: {kasi}",
+            (rect.x + 20, rect.y + 20), medium_font, WHITE)
+
+        draw_text(surface,
+            f"Voittopotti: {voittopotti} merkkiä",
+            (rect.x + 20, rect.y + 50),
+             medium_font, WHITE)
+
+        if pottiajaljella > 0:  #Jos jaettiin vasta sidepot ja loppupotin jakaminen jatkuu
+            draw_text(surface,
+                f"Pottiin jäi vielä jaettavaksi {pottiajaljella} merkkiä",
+                (rect.x + 20, rect.y + 80), medium_font, WHITE)
+
+        for i, kortti in enumerate(kortit):  #Voittokäden piirtäminen
+
+            kokonaisleveys = 5 * CARD_WIDTH + 4 * (CARD_GAP + 6) 
+            x = (rect.centerx - kokonaisleveys // 2 + i * (CARD_WIDTH + CARD_GAP + 6) + CARD_WIDTH // 2)
+            y = (self.top - 90)
+
+            draw_card(surface, kortti, (x, y), CARD_WIDTH, CARD_HEIGHT, self.kortit_sheet)
+
+
+# Kortin liikkumisen animaatio
+class KorttiAnimaatio:
+
+    def __init__(
+        self,
+        kortti,
+        alku,
+        loppu,
+        kesto = 0.3,
+        rotation = 0,
+        viive = 0.0
+    ):
+        self.kortti = kortti
+        self.sijainti = alku
+        self.alku = alku
+        self.loppu = loppu
+        self.kesto = kesto
+        self.rotationLoppu = rotation
+        self.rotation = 0  #Aina alussa ovat pystysuorassa PAITSI EIVÄT jos lähtee sivupelaajalta
+
+        self.viive = viive
+        self.aika = 0
+        self.valmis = False
+
+    def paivita(self, dt):
+        self.aika += dt
+
+        if self.aika < self.viive:
+            return
+        
+        t = min((self.aika - self.viive) / self.kesto, 1)
+        x = (self.alku[0] + (self.loppu[0] - self.alku[0]) * t)
+        y = (self.alku[1] + (self.loppu[1] - self.alku[1]) * t)
+        self.sijainti = (x, y)
+        self.rotation = self.rotationLoppu * t
+
+        if t >= 1:
+            self.valmis = True
+
+class Korttijako:
+    def __init__(self, pelipoytaGUI):
+        self.pelipoytaGUI = pelipoytaGUI
+        self.animaatiot = []
+        self.valmis = False
+
+        #Jakojärjestys sen mukaan, että alkaa jakajasta seuraavasta. Ei ehkä kuuluisi GUI:n puolelle.
+        pelaajat = [pelipoytaGUI.nakyma] + pelipoytaGUI.nakyma.muutPelaajat
+        jakajaIndex = pelaajat.index(next(p for p in pelaajat if p.nimi == pelipoytaGUI.nakyma.jakaja))
+        jarjestys = pelaajat[jakajaIndex + 1 :] + pelaajat[ : jakajaIndex + 1]
+        self.jaetaanPelaajille = [p for p in jarjestys if p.nimi in self.pelipoytaGUI.nakyma.mukanaPotissa]
+
+    def aloitaJako(self):
+
+        viive = 0  # Jotta kortit eivät lähde liikkeelle samaan aikaan
+        
+        for kierros in range(5):
+            for pelaaja in self.jaetaanPelaajille:
+                korttien_maara = 0
+                if korttien_maara <= kierros:
+                    sijainti, rotaatio = self.pelipoytaGUI.get_kortin_paikka(pelaaja, kierros)
+
+                    animaatio = KorttiAnimaatio("alaspain", (DECK_X, DECK_Y), sijainti, 0.3, rotaatio, viive)
+                    self.animaatiot.append(animaatio)
+                viive += 0.1
+
+    def paivita(self, dt):
+        for animaatio in self.animaatiot:
+            animaatio.paivita(dt)
+            if all(animaatio.valmis for animaatio in self.animaatiot):
+                self.valmis = True
+
+    def draw(self):
+        for animaatio in self.animaatiot:
+            draw_card(self.pelipoytaGUI.screen, animaatio.kortti, animaatio.sijainti, CARD_WIDTH, CARD_HEIGHT, self.pelipoytaGUI.kortit_sheet, rotation=animaatio.rotation)
+
+
+class FoldAnimaatio:
+    def __init__(self, pelipoytaGUI, pelaaja):
+        self.pelipoytaGUI = pelipoytaGUI
+        self.animaatiot = []
+        self.valmis = False
+        self.aika = 0
+
+        pelaajat = [pelipoytaGUI.nakyma] + pelipoytaGUI.nakyma.muutPelaajat
+        self.foldaaja = next(p for p in pelaajat if p.nimi == pelaaja)
+
+    def aloita(self):
+        
+        for i in range(len(self.foldaaja.kasikortit)):
+            loppusijainti = (randint(SIDE_WIDTH + 200, WIDTH - (SIDE_WIDTH + 200)), randint(HEIGHT - 500, HEIGHT - 200))
+            loppurotaatio = randint(-400, 400)
+            kesto = randint(20, 40) / 100
+
+            alkusijainti, alkurotaatio = self.pelipoytaGUI.get_kortin_paikka(self.foldaaja, i)
+            animaatio = KorttiAnimaatio("alaspain", alkusijainti, loppusijainti, kesto, loppurotaatio)
+            self.animaatiot.append(animaatio)
+
+        self.foldaaja.kasikortit = [] #Jotta vanhat kortit standardipaikalla eivät näy
+
+    def paivita(self, dt):
+        self.aika += dt
+        if self.aika > 1.4 and all(animaatio.valmis for animaatio in self.animaatiot):
+            self.valmis = True
+       
+        for animaatio in self.animaatiot:
+            animaatio.paivita(dt)
+       
+    def draw(self):
+        for animaatio in self.animaatiot:
+            draw_card(self.pelipoytaGUI.screen, animaatio.kortti, animaatio.sijainti, CARD_WIDTH, CARD_HEIGHT, self.pelipoytaGUI.kortit_sheet, rotation=animaatio.rotation)
+
+    
+class Ilmoitus:
+
+    def __init__(self, pelipoytaGUI, pelaaja, ilmoitus):  #pelaaja lähetetään valmiina indeksinä
+        self.pelipoytaGUI = pelipoytaGUI
+        self.valmis = False
+        self.aika = 0
+        self.ilmoitus = ilmoitus
+        self.rect = pygame.Rect(ILMOITUSBOKSIT[pelaaja])
+        self.tekstipaikka = ILMOITUSTEKSTIT[pelaaja]
+
+    def paivita(self, dt):
+        self.aika += dt
+        if self.aika > 1.2:
+            self.valmis = True
+          
+    def draw(self):
+        #draw_panel(self.pelipoytaGUI.screen, self.rect)
+        
+        pygame.draw.rect(self.pelipoytaGUI.screen, (240, 130, 70), self.rect, border_radius=8)
+        pygame.draw.rect(self.pelipoytaGUI.screen, BLACK, self.rect, width=2, border_radius=8)
+
+        draw_text(self.pelipoytaGUI.screen, self.ilmoitus, self.tekstipaikka, large_font, BLACK)
 
 
 
-# ============================================================
-# P1 — ALAPELAAJA
-# ============================================================
 
-def draw_bottom_player(
-    surface,
-    pelaaja,
-    valintapaneeli
-):
-
-    panel_x = PLAYER_GROUP_LEFT
-
-    cards_x = (
-        panel_x
-        + PLAYER_PANEL_WIDTH
-        + 25
-    )
-
-    # --------------------------------------------------------
-    # Info
-    # --------------------------------------------------------
-
-    panel_rect = pygame.Rect(
-        panel_x,
-        605,
-        PLAYER_PANEL_WIDTH,
-        PLAYER_PANEL_HEIGHT
-    )
-
-    draw_player_panel(
-        surface,
-        pelaaja,
-        panel_rect
-    )
-
-    # --------------------------------------------------------
-    # Kortit
-    # --------------------------------------------------------
-
-    for i, kortti in enumerate(pelaaja.kasikortit):
-
-        selected = i in valintapaneeli.valitutKortit
-
-        x = (
-            cards_x
-            + i * (CARD_WIDTH + CARD_GAP)
-            + CARD_WIDTH // 2
-        )
-
-        rect = draw_card(
-            surface,
-            kortti,
-            (x, 658),
-            CARD_WIDTH,
-            CARD_HEIGHT,
-            selected=selected
-        )
-
-        valintapaneeli.kortti_rectit[i] = rect
-
-
+        
 
 VALINNAT = {
     0: "Odottaa",
@@ -1311,3 +968,17 @@ PELIVAIHE = {
     3: "2. panostuskierros",
     4: "Käsien vertailu"
 }
+
+ILMOITUSBOKSIT = {
+    0: (SIDE_WIDTH + 120, HEIGHT - 240, 210, 90),
+    1: (SIDE_WIDTH, TOP_BAR_HEIGHT + 200, 210, 90),
+    2: (SIDE_WIDTH + 200, 200, 210, 90),
+    3: (SIDE_WIDTH + 690, TOP_BAR_HEIGHT + 220, 210, 90)
+    }
+
+ILMOITUSTEKSTIT = {
+        0: (SIDE_WIDTH + 150, HEIGHT - 215),
+        1: (SIDE_WIDTH + 30, TOP_BAR_HEIGHT + 235),
+        2: (SIDE_WIDTH + 230, 235),
+        3: (SIDE_WIDTH + 720, TOP_BAR_HEIGHT + 255)
+    }

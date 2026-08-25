@@ -51,6 +51,10 @@ class AI:
         if self.kasidata["voittoArvio"][0] > 12:  #vahva käsi ei foldaa
             uudetPainot[3] = 0
 
+        if maksettavaa == 0 and self.kasidata["voittoArvio"][0] > 5:  #Jos kukaan ei ole vielä korottanut ja kädessä vähintään suuri pari, korotus tn kasvaa
+            uudetPainot[2] *= 1.2
+            uudetPainot[3] *= 1.2
+
         if kierros == 2 and self.kasidata["voittoArvio"][0] < 4:  #Jos vaihtojen jälkeen käsi on heikko, foldin tn kasvaa
             uudetPainot[3] *= 1.5
 
@@ -111,7 +115,7 @@ class montecarloAI(AI):
 
 
     def haeParasVaihto(self, maara: int = 20) -> list:
-        #print("--------- MONTE CARLO ----------")
+        print("--------- MONTE CARLO ----------")
         analysoitu = self.kasidata
         if self.asetukset is not None:
             maara = self.asetukset.get("MC_maara", 20)  # Vertailuvaihtoja otetaan 20kpl ellei AI-asetuksissa muuta määritetä.
@@ -160,7 +164,6 @@ class montecarloAI(AI):
         return summattuVoima / maara
 
     def pyydaPanostus(self, kierros=2) -> int:  #ainakin montecarlo ja superai haluaa tiedon onko 1. vai 2. vaihtokierros, käsi simulaatio valmiiks
-
         if kierros == 1:
             self.vaihdetaan = self.haeParasVaihto()  # Tämä päivittää myös self.arvioituVoimakkuus
             vertailuVoima = self.arvioituVoimakkuus
@@ -279,3 +282,7 @@ PANOSTUS_TN = {  #Panostusvalintojen perustodennäköisyydet aggro: 1-3, valinta
 class superAI(AI):
     pass
 
+#Entä semmonen type HUIJARI, joka vaihtaakin kortit x2
+
+#Laitetaan suhdeluku niin että pelaajiaAlussa + pelaajiaNyt / 2 ? Niin kannustaa jatkamaan kun pelaajat vähenee
+#Tai 0.7x nyt, 0.3x alussa

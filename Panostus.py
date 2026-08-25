@@ -16,6 +16,7 @@ class PanostusKierros:
         self.valmis = False
         self.odottaaValintaa = False
         self.voittaja = None
+        self.fold_voitto = False
 
     #Panostuskierroksen päälooppi
     def paivitaTila(self):
@@ -23,8 +24,22 @@ class PanostusKierros:
         if self.valmis:
             return
 
+        if self.fold_voitto:
+            ihmispelaaja = next(p for p in self.pelipoyta.pelaajat if not p.ai)
+            jatketaan = ihmispelaaja.gui.GUI_pelipoyta.valintapaneeli.get_valinta()
+            if jatketaan is None:
+                return
+
+            self.fold_voitto = False
+            self.valmis = True
+            self.odottaaValintaa = False
+            self.jako.showdownData = None
+            ihmispelaaja.gui.GUI_pelipoyta.valintapaneeli.mode = "panostus"
+
+            return
+
         if self.odottaaValintaa:
-            valintaStr = self.pelaajaVuorossa.gui.valintapaneeli.get_valinta()
+            valintaStr = self.pelaajaVuorossa.gui.GUI_pelipoyta.valintapaneeli.get_valinta()
             if valintaStr is None:
                 return
 
@@ -35,13 +50,15 @@ class PanostusKierros:
             else: raise ValueError("Tuntematon panostuksen valintateksti:", valintaStr)
 
             self.vastaanotaPanostus(self.pelaajaVuorossa, valinta)
-            #self.pelaajaVuorossa.gui.valintapaneeli.mode = "odottaa"  #TÄLLAISIA NIIHIN VÄLEIHIN MISSÄ NIITÄ TARVITAAN
+            #self.pelaajaVuorossa.gui.GUI_pelipoyta.valintapaneeli.mode = "odottaa"  #TÄLLAISIA NIIHIN VÄLEIHIN MISSÄ NIITÄ TARVITAAN
             return            
 
         if sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen
-            return  #Jos max 1 pelaaja olisi panostamassa, panostuskierrosta ei tarvita. 
+            self.lopetaKierros()  #Jos max 1 pelaaja olisi panostamassa, panostuskierrosta ei tarvita. 
+            return  
         
         self.pelipoyta.paivitaNakymat()
+        self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "panostuskierrosAlku"})
                 
         while True:
             self.pelaajaVuorossa = self.jako.pelaajat[(self.vuoro + self.jako.jakaja) % len(self.jako.pelaajat)] 
@@ -67,8 +84,8 @@ class PanostusKierros:
             else:
                 #Ihmispelaaja jää odottamaan valintaa
                 self.odottaaValintaa = True
-                self.pelaajaVuorossa.gui.valintapaneeli.mode = "panostus"
                 self.pelipoyta.paivitaNakymat()
+                self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "pyydaPanos", "pelaaja": self.pelaajaVuorossa.nimi})
                 return
 
     '''
@@ -134,31 +151,40 @@ class PanostusKierros:
         maksettavaa = self.suurinKorotus - pelaaja.maksettuPanostukseen
 
         pelaaja.valinta = valinta
+        ilmoitusteksti = None
         
         if valinta == 1:
             call = self.maksaPanos(pelaaja, maksettavaa)
             if call == 0:
-                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} check!")
+                self.pelipoyta.loggaa(f"{pelaaja.nimi} check!")
+                ilmoitusteksti = "Check!"
             else:    
-                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} maksoi {call} merkkiä!")
+                self.pelipoyta.loggaa(f"{pelaaja.nimi} maksoi {call} merkkiä!")
+                ilmoitusteksti = f"Maksan {call}!"
 
         elif pelaaja.valinta == 2:
             korotus = self.maksaPanos(pelaaja, maksettavaa + self.panos)
-            self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} korotti {korotus} merkkiä!")
+            self.pelipoyta.loggaa(f"{pelaaja.nimi} korotti {korotus} merkkiä!")
+            ilmoitusteksti = f"Korotan {korotus}!"
 
         elif pelaaja.valinta == 3:
             korotus = self.maksaPanos(pelaaja, maksettavaa + (3 * self.panos) )
-            self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} korotti {korotus} merkkiä!")
+            self.pelipoyta.loggaa(f"{pelaaja.nimi} korotti {korotus} merkkiä!")
+            ilmoitusteksti = f"Korotan {korotus}!"
 
         else:
             if maksettavaa > 0:
                 self.jako.mukanaPotissa.remove(pelaaja)
-                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} kippasi!")
+                self.pelipoyta.loggaa(f"{pelaaja.nimi} luovutti!")
                 pelaaja.valinta = 4 
+                pelaaja.folded = True
+                ilmoitusteksti = "Luovutan!"
             else: 
                 pelaaja.valinta = 1 #automaattinen check, ei voi foldata ilman panosta vastassa.
-                self.pelipoyta.loggaa(f"Pelaaja {pelaaja.nimi} check!")
+                self.pelipoyta.loggaa(f"{pelaaja.nimi} check!")
+                ilmoitusteksti = "Check!"
 
+        self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "panostus", "valinta": pelaaja.valinta, "pelaaja": pelaaja.nimi, "ilmoitus": ilmoitusteksti})
         self.odottaaValintaa = False
 
 
@@ -180,6 +206,9 @@ class PanostusKierros:
                 self.suurinKorotus = pelaaja.maksettuPanostukseen
             pelaaja.chips = 0
             pelaaja.allin = True
+            self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "ilmoitus", "pelaaja": pelaaja.nimi, "ilmoitus": "ALL-IN!"})
+
+
         print("\nTämä pelaaja on nyt maksanut panostukseen,", pelaaja.maksettuPanostukseen, "ja koko jakoon", pelaaja.maksettuJakoon, "\n")
         return maara #Palauttaa pottiin maksettujen chippien määrän
 
@@ -205,6 +234,7 @@ class PanostusKierros:
                 SuurinPanosEnsin[0].chips += maksettuLiikaa
 
         self.pelipoyta.loggaa(f"Panostuskierros päättyi, potissa: {self.jako.potti}")
+        self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "panostuskierrosLoppu"})
         
         for p in self.jako.pelaajat: #Nollataan panostuskierroksen tiedot
             p.nollaaPanos()
@@ -214,11 +244,16 @@ class PanostusKierros:
 
         if len(self.jako.mukanaPotissa) == 1: 
             self.voittaja = self.jako.mukanaPotissa[0]
+            self.fold_voitto = True
+            ihmispelaaja = next(p for p in self.pelipoyta.pelaajat if not p.ai)
+            self.jako.showdownData = {"voittaja": self.voittaja, "potti": self.jako.potti}          
+            self.pelipoyta.paivitaNakymat()
+            self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "fold_voitto"})
+
         else: 
             self.voittaja = None
-
-        self.valmis = True
-        self.odottaaValintaa = False
+            self.valmis = True
+            self.odottaaValintaa = False
 
 
 
