@@ -65,7 +65,7 @@ class Pelaaja:
     def tulostaKasi(self):
         print(f"Pelaaja {self.nimi}, käsikortit: {self.kasikortit}")
 
-
+    '''
     def pyydaVaihdot(self) -> list:
         vaihdettavat = []
         if self.ai is not None:
@@ -85,6 +85,7 @@ class Pelaaja:
             vaihdettavat = [self.nakyma.kasikortit[i] for i in vaihtoindeksit]
 
         return vaihdettavat
+    '''
 
     
     def pyydaVaihdotTeksti(self) -> list:
@@ -178,14 +179,12 @@ class PelaajaNakyma:
         self.pieniKorotus = None
         self.suuriKorotus = None
         self.folded = None
-        self.showdown = None  #Tästä tehdään oma event eikä kuljeteta pelaajan tiedoissa
 
         if pelipoyta.jako is not None:
             self.potti = pelipoyta.jako.potti 
             self.panos = pelipoyta.jako.panos 
             self.folded = pelaaja.folded
             self.mukanaPotissa = [p.nimi for p in pelipoyta.jako.mukanaPotissa] #Ei pelaajaolioita viewiin, vain nimiä
-            self.showdown = pelipoyta.jako.showdownData
 
             if pelipoyta.jako.panostuskierros is not None:
                 self.pelaajaVuorossa = pelipoyta.jako.panostuskierros.pelaajaVuorossa.nimi
@@ -221,8 +220,6 @@ class MuutNakee:
             self.kasikortit = [Kortti("muu", 0, alaspain = True) for _ in pelaaja.kasikortit]
         else: self.kasikortit = []
 
-        #elif pelipoyta.jako == None or pelipoyta.jako.tila == "alku":
-                    #self.kasikortit = []
 
 
         

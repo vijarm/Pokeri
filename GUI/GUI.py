@@ -86,10 +86,16 @@ class GUI:
         pygame.display.flip()
 
     def paivita(self, dt):  #Hakee enginen tuottamat pelitilannemuutokset ja uudet pelinäkymät
+        if self.current_screen == "GUI_pelipoyta":
+            if self.GUI_pelipoyta.poistu == True:
+                print("Poistu painettu, tee jotain")
+                self.GUI_pelipoyta.poistu = False
+                return
+
+
         paivitykset = self.pelipoyta.haePaivitykset()
 
         self.paivitysjono.extend(paivitykset)
-
 
         if self.paivitysjono and not self.GUI_pelipoyta.animaatiot:  #Jonossa tehtäviä ja animaatio ei käynnissä, otetaan uusi
             self.uusinPaivitys = self.paivitysjono.pop(0)
@@ -100,7 +106,6 @@ class GUI:
             else:  #väliaikainen?
                 self.asetaNakyma(self.uusinPaivitys.nakyma)
                 self.uusinPaivitys = None
-
 
         if self.GUI_pelipoyta.animaatiot:
             for animaatio in self.GUI_pelipoyta.animaatiot:

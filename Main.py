@@ -32,8 +32,8 @@ class Peli:
         self.running = True
 
     def paivitaTila(self):
-        if self.pelipoyta.voittaja is not None:
-            self.running = False
+        if self.pelipoyta.tila == "valmis":
+            #self.running = False
             return
 
         self.pelipoyta.paivitaTila()

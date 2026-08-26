@@ -17,7 +17,7 @@ class Pelipoyta:
         self.jakaja: Pelaaja = self.pelaajat[self.jakovuoro % len(self.pelaajat)]
         self.panos: int = 0
 
-        self.pelivaihe = 0  # 1 = 1. panostus | 2 = vaihdot | 3 = 2. panostus | 4 = showdown
+        self.pelivaihe = 0  # 0 = alku | 1 = 1. panostus | 2 = vaihdot | 3 = 2. panostus | 4 = showdown
         self.jako = None
         self.tila = "peli"
         self.voittaja = None
@@ -101,7 +101,7 @@ class Pelipoyta:
                 
         self.lopetaKierros()
         self.paivitaNakymat()
-        self.paivitaGUI("pelipoyta", {"tapahtuma": "potinJako"})
+        self.paivitaGUI("pelipoyta", {"tapahtuma": "pottiJaettu"})  #Tällä ei ole mitään vastatapahtumaa, halutaanko joku yhteisveto tilanteesta?
         self.jako = None
 
 
@@ -128,17 +128,20 @@ class Pelipoyta:
     def lopetaKierros(self): 
         for pelaaja in self.pelaajat:
             pelaaja.nollaaKierros()
-            if pelaaja.chips <= 0:
-                pelaaja.aktiivinen = False
-                self.paivitaNakymat()
-                self.paivitaGUI("pelipoyta", {"tapahtuma": "pelaajaTippui"})
+            if pelaaja.aktiivinen:
+                if pelaaja.chips <= 0:
+                    pelaaja.aktiivinen = False
+                    self.paivitaNakymat()
+                    self.loggaa(f"{pelaaja.nimi} tippui pelistä!")
+                    self.paivitaGUI("pelipoyta", {"tapahtuma": "pelaajaTippui", "pelaaja": pelaaja.nimi, "ilmoitus": [f"{pelaaja.nimi} tippui pelistä!"]})
         self.pelipakka.kortit.clear()
         #discardpile, mihin tulee ja tarvitaanko miten?
         self.pelipakka.kortit = self.PerusPakka.kortit.copy()
 
     def julistaVoittaja(self, voittaja: Pelaaja):
         self.paivitaNakymat()
-        self.paivitaGUI("pelipoyta", {"tapahtuma": "voittajaLoytyi"})
+        self.loggaa(f"{voittaja.nimi} voitti koko pelin!")
+        self.paivitaGUI("pelipoyta", {"tapahtuma": "voittajaLoytyi", "pelaaja": voittaja.nimi, "ilmoitus": ["Peli on päättynyt!", f"Pelin on voittanut {voittaja.nimi}!"]})
         print("TÖTTÖTTÖRÖÖÖÖ RÖ TÖÖÖ!!!")
         print("MEILLÄ ON UUSI MESTARI!")
         print("HÄN KULKEE NIMELLÄ", voittaja.nimi, "JA PEITTOSI MUUT KERÄÄMÄLLÄ", voittaja.chips, "CHIPPIÄ!")
