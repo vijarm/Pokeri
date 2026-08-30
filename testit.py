@@ -42,11 +42,8 @@ def tilastoiKadet(kierrosmaara: int, pelaajamaara: int, aiclass: str) -> list:
         testipeli.jako.kerroKortit()
 
         for i in range(0, pelaajamaara):
-            vaihdot = testipeli.jako.pelaajat[i].pyydaVaihdot()
-            for Kortti in vaihdot:
-                testipeli.jako.pelaajat[i].kasikortit.remove(Kortti)
-                testipeli.jako.pelaajat[i].kasikortit.append(testipeli.jako.pakka.nosta())
-            print("Pelaaja", testipeli.jako.pelaajat[i].nimi, "vaihtoi", len(vaihdot), "korttia.")
+            vaihdot = testipeli.jako.pyydaVaihtoAI(testipeli.jako.pelaajat[i])
+            print("Pelaaja", testipeli.jako.pelaajat[i].nimi, "vaihtoi", vaihdot, "korttia.")
 
         voittaja = testipeli.jako.vertaaKadet(testipeli.jako.pelaajat)
         voittoluokka = voittaja[0]["voittoArvio"][0]
@@ -142,11 +139,7 @@ def testaaPanostusta(kierrosmaara: int, pelaajamaara: int, aiclass: str, aisetti
         for i in range(0, pelaajamaara):
             testipeli.paivitaNakymat()
             if vaihdetaan == True:
-                vaihdot = testipeli.jako.pelaajat[i].pyydaVaihdot()
-                for Kortti in vaihdot:
-                    testipeli.jako.pelaajat[i].kasikortit.remove(Kortti)
-                    testipeli.jako.pelaajat[i].kasikortit.append(testipeli.jako.pakka.nosta())
-                
+                vaihdot = testipeli.jako.pyydaVaihtoAI(testipeli.jako.pelaajat[i])
 
             valinta = testipeli.jako.pelaajat[i].pyydaPanostus(kierros)
             testipeli.paivitaNakymat()
@@ -172,38 +165,40 @@ def tilastoiVoitot(pelimaara: int, pelaajat=None):
             nimi = f"Tietokone {i+1}"
             pelaajat.append(Pelaaja(nimi, "Tietsikka", AI_valinta=ai_type[i], AI_asetukset=asetukset[i]))
 
-    Voitot = {}
+    voitot = {}
     for pelaaja in pelaajat:
-        Voitot[pelaaja] = 0
+        voitot[pelaaja] = 0
 
     for _ in range(pelimaara):
         MyGame = Pelipoyta(pelaajat)
         MyGame.simulointi = True
-        while MyGame.voittaja is None:
+        while True:
             MyGame.paivitaTila()
+            if MyGame.tila == "valmis":
+                break
 
-        Voitot[MyGame.voittaja] += 1
+        voitot[MyGame.voittaja] += 1
         for p in pelaajat:
             p.nollaaKokoPeli()
 
-    for pelaaja, voitot in Voitot.items():
+    for pelaaja, voitot in voitot.items():
         print("PELAAJA:", pelaaja.nimi, "|| VOITOT:", voitot, "|| LISÄTIEDOT:", pelaaja.ai_tyyppi, pelaaja.ai.asetukset)
 
 
 
-#listat = tilastoiKadet(50, 4, "random")
-#listat = tilastoiKadet(50, 4, "montecarlo")
+#listat = tilastoiKadet(50, 4, "Satunnainen")
+#listat = tilastoiKadet(50, 4, "Monte Carlo")
 #listat = tilastoiKadet(50, 4, "steady")
 
 asetukset = {"aggressiivisuus": 2}
-#testaaPanostusta(500, 4, "random", asetukset)  #Huom tämä pelaa sen kierroksen, joten kun tulee raiseja niin muiden mahdollisuus muuttuu
-#testaaPanostusta(50, 4, "montecarlo", asetukset, kierros=2, vaihdetaan=True)  #voi lisätä kierros=2, oletus 1 | vaihdetaan=True, oletus false
+#testaaPanostusta(500, 4, "Satunnainen", asetukset)  #Huom tämä pelaa sen kierroksen, joten kun tulee raiseja niin muiden mahdollisuus muuttuu
+#testaaPanostusta(50, 4, "Monte Carlo", asetukset, kierros=2, vaihdetaan=True)  #voi lisätä kierros=2, oletus 1 | vaihdetaan=True, oletus false
 
 asetukset = [{"aggressiivisuus": 1}, {"aggressiivisuus": 2}, {"aggressiivisuus": 3}, {"aggressiivisuus": 3}]
-ai_type = ["montecarlo", "montecarlo", "montecarlo", "random"]
+ai_type = ["Monte Carlo", "Monte Carlo", "Monte Carlo", "Satunnainen"]
 pelaajat = []
 for i in range(4):
     nimi = f"Tietokone {i+1}"
     pelaajat.append(Pelaaja(nimi, "Tietsikka", AI_valinta=ai_type[i], AI_asetukset=asetukset[i]))
 
-#tilastoiVoitot(10, pelaajat)
+#tilastoiVoitot(100, pelaajat)

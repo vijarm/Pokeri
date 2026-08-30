@@ -114,6 +114,7 @@ small_font = settings.small_font
 font = settings.font
 medium_font = settings.medium_font
 large_font = settings.large_font
+very_large_font = settings.very_large_font
 title_font = settings.title_font
 
 
@@ -126,9 +127,11 @@ def piirra_pelipoyta(gui_pelipoyta):
 
     draw_side_player(gui_pelipoyta, "left")
 
-    draw_top_player(gui_pelipoyta)
+    if len(gui_pelipoyta.nakyma.muutPelaajat) > 1:
+        draw_top_player(gui_pelipoyta)
 
-    draw_side_player(gui_pelipoyta, "right")
+    if len(gui_pelipoyta.nakyma.muutPelaajat) > 2:
+        draw_side_player(gui_pelipoyta, "right")
 
     draw_center_area(gui_pelipoyta)
 
@@ -273,13 +276,15 @@ def draw_center_area(gui_pelipoyta):
     pot_x = 620
     pot_y = 300
 
-    draw_centered_text(surface, "POTTI", (pot_x, pot_y), medium_font)
+    draw_centered_text(surface, "POTTI", (pot_x, pot_y), large_font)
 
-    draw_centered_text(surface, nakyma.potti, (pot_x, pot_y + 38), large_font, GOLD)
+    if nakyma.potti is not None:
+        draw_centered_text(surface, nakyma.potti, (pot_x, pot_y + 44), very_large_font, GOLD)
 
-    draw_centered_text(surface,
-        f"Suurin korotus: {nakyma.suurinKorotus}",
-        (pot_x, pot_y + 72), small_font, GRAY)
+    if nakyma.suurinKorotus is not None:
+        draw_centered_text(surface,
+            f"Suurin korotus: {nakyma.suurinKorotus}",
+            (pot_x, pot_y + 80), small_font, GRAY)
 
     #Pakka
     deck_x = DECK_X
@@ -301,7 +306,7 @@ def draw_top_bar(gui_pelipoyta):
     pygame.draw.rect(surface, PANEL_DARK, (0, 0, WIDTH, TOP_BAR_HEIGHT) )
 
     draw_text(surface,
-        "MARKKAPOKERI",
+        "POKERISIMULAATTORI",
         (18, 13), title_font)
 
     draw_text(surface,

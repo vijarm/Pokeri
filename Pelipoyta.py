@@ -4,7 +4,7 @@ from Jako import Jako
 from random import randint
 
 class Pelipoyta:
-    def __init__(self, pelaajat: list):
+    def __init__(self, pelaajat: list, simulointi = False):
         self.PerusPakka = Pakka()
         self.PerusPakka.luo_pakka()
 
@@ -21,8 +21,9 @@ class Pelipoyta:
         self.jako = None
         self.tila = "peli"
         self.voittaja = None
+        self.ok = False  #Yleinen "ok" kuittaus GUI:sta
 
-        self.simulointi = False
+        self.simulointi = simulointi
         self.log = []
         self.paivitykset = []
     

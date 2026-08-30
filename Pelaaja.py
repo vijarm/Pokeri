@@ -4,10 +4,10 @@ from GUI.GUI import GUI
 from Pakka import Kortti
 
 AI_TYYPIT = {
-    "random": randomAI,
-    "montecarlo": montecarloAI,
+    "Satunnainen": randomAI,
+    "Monte Carlo": montecarloAI,
     "steady": steadycarloAI,
-    "vahvistusoppinut": superAI
+    "Koneoppinut": superAI
 }
 
 class Pelaaja:
@@ -65,49 +65,15 @@ class Pelaaja:
     def tulostaKasi(self):
         print(f"Pelaaja {self.nimi}, käsikortit: {self.kasikortit}")
 
-    '''
-    def pyydaVaihdot(self) -> list:
-        vaihdettavat = []
-        if self.ai is not None:
-            vaihdettavat = self.ai.vaihdaKortit()
-        else:  # Nää tulee myöhemmin GUI:n kautta
-            analysoitu = laskeArvot(self.nakyma.kasikortit, vaihtoja=True)
+    def muokkaa(self, tiedot):
+        self.nimi = tiedot["nimi"]
+        self.tyyppi = tiedot["tyyppi"]
+        if tiedot["ai"] is not None:
+            ai_luokka = AI_TYYPIT[tiedot["ai"]]
+            asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": tiedot["ai"], "strategia": tiedot["ai_strategia"]}
+            self.ai = ai_luokka(self, asetukset)
+            self.ai_tyyppi = tiedot["ai"]
 
-            self.gui.GUI_pelipoyta.valintapaneeli.mode = "vaihdot"
-
-            while self.gui.GUI_pelipoyta.valintapaneeli.vaihdettavat is None:
-                self.gui.process_events()
-                self.gui.draw()
-                self.gui.clock.tick(60)  #FPS
-
-            vaihtoindeksit = self.gui.GUI_pelipoyta.valintapaneeli.get_valinta()
-            assert isinstance(vaihtoindeksit, list)
-            vaihdettavat = [self.nakyma.kasikortit[i] for i in vaihtoindeksit]
-
-        return vaihdettavat
-    '''
-
-    
-    def pyydaVaihdotTeksti(self) -> list:
-        vaihdettavat = []
-        if self.ai is not None:
-            vaihdettavat = self.ai.vaihdaKortit()
-        else:  # Nää tulee myöhemmin GUI:n kautta
-            analysoitu = laskeArvot(self.nakyma.kasikortit, vaihtoja=True)
-            vaihdetaanIndex = input("Mitä vaihdetaan indeksillä?")
-            if vaihdetaanIndex.strip() == "": return []
-
-            if vaihdetaanIndex.strip() == "a":  #Ota suositus
-                if len(analysoitu["vaihtosuositus"]) > 0:
-                    for kortti in analysoitu["vaihtosuositus"][0]:
-                        vaihdettavat.append(kortti)
-
-            else:
-                lista = vaihdetaanIndex.split(" ")  #Ota indexit syötteestä
-                for i in lista:
-                    vaihdettavat.append(self.nakyma.kasikortit[int(i)])
-
-        return vaihdettavat
 
     
     def pyydaPanostus(self, kierros=2) -> int:  #Onko tälle enää tarvetta, suoraan ohi?

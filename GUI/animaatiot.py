@@ -114,8 +114,8 @@ class FoldAnimaatio:
     def aloita(self):
         
         for i in range(len(self.foldaaja.kasikortit)):
-            loppusijainti = (randint(SIDE_WIDTH + 200, WIDTH - (SIDE_WIDTH + 200)), randint(HEIGHT - 500, HEIGHT - 200))
-            loppurotaatio = randint(-400, 400)
+            loppusijainti = (randint(SIDE_WIDTH + 200, WIDTH - (SIDE_WIDTH + 300)), randint(HEIGHT - 450, HEIGHT - 250))
+            loppurotaatio = randint(-600, 600)
             kesto = randint(20, 40) / 100
 
             alkusijainti, alkurotaatio = get_kortin_paikka(self.pelipoytaGUI, self.foldaaja, i)

@@ -17,62 +17,9 @@ CENTER_LEFT = SIDE_WIDTH
 CENTER_RIGHT = WIDTH - SIDE_WIDTH
 CENTER_WIDTH = CENTER_RIGHT - CENTER_LEFT
 
-DECK_X = 785
-DECK_Y = 320
-
-
-#Korttien kuvien x,y sijainti sheetissä
-MAA_RIVIT = {
-    "PATA": 0,
-    "RISTI": 1,
-    "HERTTA": 2,
-    "RUUTU": 3,
-    "muu": 4
-}
-
-NUMERO_SARAKKEET = {
-    14: 0,
-    2: 1,
-    3: 2,
-    4: 3,
-    5: 4,
-    6: 5,
-    7: 6,
-    8: 7,
-    9: 8,
-    10: 9,
-    11: 10,
-    12: 11,
-    13: 12
-}
-
-
 CARD_WIDTH = 78
 CARD_HEIGHT = 108
 CARD_GAP = 8
-
-CARD_COUNT = 5
-
-CARDS_WIDTH = (
-    CARD_COUNT * CARD_WIDTH
-    + (CARD_COUNT - 1) * CARD_GAP
-)
-
-PLAYER_PANEL_WIDTH = 145
-PLAYER_PANEL_HEIGHT = 105
-
-PLAYER_GROUP_WIDTH = (
-    PLAYER_PANEL_WIDTH
-    + 25
-    + CARDS_WIDTH
-)
-
-PLAYER_GROUP_LEFT = (
-    CENTER_LEFT
-    + (CENTER_WIDTH - PLAYER_GROUP_WIDTH) // 2
-)
-
-
 
 # ============================================================
 # VÄRIT
@@ -80,9 +27,6 @@ PLAYER_GROUP_LEFT = (
 
 TABLE_GREEN = settings.TABLE_GREEN
 TABLE_DARK = settings.TABLE_DARK
-
-PANEL_COLOR = settings.PANEL_COLOR
-PANEL_DARK = settings.PANEL_DARK
 
 WHITE = settings.WHITE
 BLACK = settings.BLACK
@@ -96,31 +40,29 @@ GOLD = settings.GOLD
 TURKOOSI = settings.TURKOOSI
 ORANSSI = settings.ORANSSI
 
-small_font = settings.small_font
 font = settings.font
 medium_font = settings.medium_font
 large_font = settings.large_font
-title_font = settings.title_font
 
 
 
 class GUI_pelipoyta:
 
-    def __init__(self, screen, nakyma, kortit_sheet):
+    def __init__(self, screen, nakyma, kortit_sheet, lisaaKomento):
         self.screen = screen
         self.kortit_sheet = kortit_sheet
         self.nakyma = nakyma
-        self.valintapaneeli = ValintaPaneeli(nakyma, kortit_sheet)
+        self.lisaaKomento = lisaaKomento
+        self.valintapaneeli = ValintaPaneeli(nakyma, kortit_sheet, lisaaKomento)
         self.animaatiot = []
 
         self.poistu_rect = pygame.Rect(WIDTH - 120, 10, 100, 32)
-        self.poistu = False
 
     def handle_event(self, event):
         
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.poistu_rect.collidepoint(event.pos):
-                self.poistu = True
+                self.lisaaKomento("poistu", self.nakyma.nimi)
                 return
     
         self.valintapaneeli.handle_event(event)
@@ -206,7 +148,7 @@ class GUI_pelipoyta:
 
         piirra_pelipoyta(self)
 
-        self.valintapaneeli.draw(self.screen) #Valintapaneelin oma sisältö muuttuu pelitilanteen mukaan
+        self.valintapaneeli.draw(self.screen) #Valintapaneelin sisältö muuttuu pelitilanteen mukaan
 
         for animaatio in self.animaatiot:
             animaatio.draw()
@@ -224,7 +166,6 @@ class GUI_pelipoyta:
         vaihtoAnimaatio = VaihtoAnimaatio(self, pelaaja, indeksit)
         vaihtoAnimaatio.aloita()
         self.animaatiot.append(vaihtoAnimaatio)
-
 
     def foldaa(self, pelaaja):
         foldAnimaatio = FoldAnimaatio(self, pelaaja)
@@ -255,7 +196,7 @@ class GUI_pelipoyta:
 
 class ValintaPaneeli:
 
-    def __init__(self, nakyma, kortit_sheet):
+    def __init__(self, nakyma, kortit_sheet, lisaaKomento):
 
         # "panostus"
         # "vaihdot"
@@ -281,7 +222,7 @@ class ValintaPaneeli:
 
         self.showdownData = None
 
-        self.jatketaan = None
+        self.lisaaKomento = lisaaKomento
 
         self.panostus_buttons = {
             "maksa": pygame.Rect(402, 540, 110, 35),
@@ -312,8 +253,8 @@ class ValintaPaneeli:
 
                 if rect.collidepoint(event.pos):
                     if self.valintaSallittu(valinta):
-                        self.valinta = valinta
-                    print("PANOSTUSVALINTA:", valinta)
+                        self.lisaaKomento("panostusvalinta", self.nakyma.nimi, {"panostusvalinta": valinta})
+                        self.mode = "odottaa"
 
         elif self.mode == "vaihdot":
 
@@ -329,77 +270,37 @@ class ValintaPaneeli:
                             self.valitutKortit.append(i)
                         return
 
-                if self.vaihtoNappi_rect.collidepoint(event.pos):
-                    self.vaihdettavat = self.valitutKortit.copy()
+                if self.vaihtoNappi_rect.collidepoint(event.pos):  #Kun painetaan vaihda-nappia
+
+                    self.lisaaKomento("vaihdot", self.nakyma.nimi, {"vaihtoindeksit": self.valitutKortit.copy()})
+                    self.valitutKortit = []
+                    self.mode = "odottaa"
+                    return
+                                       
 
         elif self.mode == "showdown":
 
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 if self.jatkaNappi_rect.collidepoint(event.pos):
-                    self.jatketaan = True
+                    self.lisaaKomento("ok", self.nakyma.nimi)
 
         elif self.mode == "fold_voitto":
 
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 if self.jatkaNappi_rect.collidepoint(event.pos):
-                    self.jatketaan = True
+                    #self.jatketaan = True
+                    self.lisaaKomento("ok", self.nakyma.nimi)
+                    self.mode = "odottaa"
 
         elif self.mode == "voittajaLoytyi":
 
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 if self.jatkaNappi_rect.collidepoint(event.pos):
-                    self.jatketaan = True
-
-
-    def get_valinta(self): 
-
-        if self.mode == "panostus":
-
-            valinta = self.valinta
-            self.valinta = None
-
-            if valinta is not None:
-                self.mode = "odottaa"
-            return valinta
-
-        if self.mode == "vaihdot":
-
-            if self.vaihdettavat is None:
-                return None
-            
-            vaihdettavat = self.vaihdettavat.copy()
-            self.vaihdettavat = None
-            self.valitutKortit = []
-            self.mode = "odottaa"
-            return vaihdettavat
-
-        if self.mode == "showdown":
-
-            jatketaan = self.jatketaan
-            self.jatketaan = None
-
-            return jatketaan
-
-        if self.mode == "fold_voitto":
-
-            jatketaan = self.jatketaan
-            self.jatketaan = None
-
-            if jatketaan is not None:
-                self.mode = "odottaa"
-            return jatketaan
-
-        if self.mode == "voittajaLoytyi":  #Mihin tästä jatketaan? Flipataan display johkin menuun
-        
-            jatketaan = self.jatketaan
-            self.jatketaan = None
-
-            if jatketaan is not None:
-                self.mode = "odottaa"  
-            return jatketaan
+                    self.lisaaKomento("peli_ohi", self.nakyma.nimi)
+                    #Engine vaihtaa valikkoon
 
                 
     def draw(self, surface):
@@ -420,7 +321,7 @@ class ValintaPaneeli:
 
                 draw_centered_text(surface,
                     self.ilmoitus[rivi],
-                    (rect.centerx, rect.y + 35 + (rivi * 25)), medium_font)
+                    (rect.centerx, rect.y + 22 + (rivi * 25)), medium_font)
 
 
         elif self.mode == "panostus":
@@ -502,7 +403,7 @@ class ValintaPaneeli:
     
                     draw_centered_text(surface,
                         self.ilmoitus[rivi],
-                        (rect.centerx, rect.y + 35 + (rivi * 25)), medium_font)
+                        (rect.centerx, rect.y + 15 + (rivi * 25)), medium_font)
 
                 pygame.draw.rect(surface, GOLD, self.jatkaNappi_rect)
                 draw_centered_text(surface, "JATKA", self.jatkaNappi_rect.center, font, BLACK)

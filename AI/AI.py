@@ -11,6 +11,7 @@ class AI:
         else: 
             self.asetukset = asetukset
 
+        self.luokka = self.asetukset.get("luokka")  #Montecarlo, superai jne
         self.strategia = self.asetukset.get("strategia")
         self.aggressiivisuus = self.asetukset.get("aggressiivisuus", 2)  # 1 = passiivinen, 2 = normaali (default), 3 = aggro
         

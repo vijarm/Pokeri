@@ -15,6 +15,7 @@ class PanostusKierros:
         self.vuoro = 1
         self.valmis = False
         self.odottaaValintaa = False
+        self.panostusValinta = None
         self.voittaja = None
         self.fold_voitto = False
 
@@ -25,28 +26,29 @@ class PanostusKierros:
             return
 
         if self.fold_voitto:
-            ihmispelaaja = next(p for p in self.pelipoyta.pelaajat if not p.ai)
-            jatketaan = ihmispelaaja.gui.GUI_pelipoyta.valintapaneeli.get_valinta()
-            if jatketaan is None:
-                return
+            #ihmispelaaja = next(p for p in self.pelipoyta.pelaajat if not p.ai)  #Host? Yhteinen ok?
+            if self.pelipoyta.simulointi is False:
+                if self.pelipoyta.ok is False:
+                    return
 
             self.fold_voitto = False
             self.valmis = True
             self.odottaaValintaa = False
+            self.pelipoyta.ok = False
             return
 
         if self.odottaaValintaa:
-            valintaStr = self.pelaajaVuorossa.gui.GUI_pelipoyta.valintapaneeli.get_valinta()
-            if valintaStr is None:
+            if self.panostusValinta is None:
                 return
 
-            if valintaStr == "maksa": valinta = 1
-            elif valintaStr == "pieniKorotus": valinta = 2
-            elif valintaStr == "suuriKorotus": valinta = 3
-            elif valintaStr == "luovuta": valinta = 4
-            else: raise ValueError("Tuntematon panostuksen valintateksti:", valintaStr)
+            if self.panostusValinta == "maksa": valinta = 1
+            elif self.panostusValinta == "pieniKorotus": valinta = 2
+            elif self.panostusValinta == "suuriKorotus": valinta = 3
+            elif self.panostusValinta == "luovuta": valinta = 4
+            else: raise ValueError("Tuntematon panostuksen valintateksti:", self.panostusValinta)
 
             self.vastaanotaPanostus(self.pelaajaVuorossa, valinta)
+            self.panostusValinta = None
             return            
 
         if sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen
@@ -236,6 +238,7 @@ class PanostusKierros:
         if len(self.jako.mukanaPotissa) == 1: 
             self.voittaja = self.jako.mukanaPotissa[0]
             self.fold_voitto = True
+            self.pelipoyta.loggaa(f"Muut foldasivat, {self.voittaja.nimi} voitti {self.jako.potti} merkkiä.")
             self.pelipoyta.paivitaNakymat()
             self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "fold_voitto", "showdownData": {"voittaja": self.voittaja.nimi, "potti": self.jako.potti}})
 
