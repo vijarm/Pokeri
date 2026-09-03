@@ -25,9 +25,12 @@ class PanostusKierros:
         if self.valmis:
             return
 
+        if self.vuoro == 1 and sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen
+            self.lopetaKierros()  #Jos max 1 pelaaja olisi panostamassa, panostuskierrosta ei tarvita. 
+            return  
+
         if self.fold_voitto:
-            #ihmispelaaja = next(p for p in self.pelipoyta.pelaajat if not p.ai)  #Host? Yhteinen ok?
-            if self.pelipoyta.simulointi is False:
+            if self.pelipoyta.simulointi is None:
                 if self.pelipoyta.ok is False:
                     return
 
@@ -50,10 +53,6 @@ class PanostusKierros:
             self.vastaanotaPanostus(self.pelaajaVuorossa, valinta)
             self.panostusValinta = None
             return            
-
-        if sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen
-            self.lopetaKierros()  #Jos max 1 pelaaja olisi panostamassa, panostuskierrosta ei tarvita. 
-            return  
         
         self.pelipoyta.paivitaNakymat()
                 
@@ -171,7 +170,8 @@ class PanostusKierros:
 
         else:
             if maksettavaa > 0:
-                self.jako.mukanaPotissa.remove(pelaaja)
+                if pelaaja in self.jako.mukanaPotissa:
+                    self.jako.mukanaPotissa.remove(pelaaja)
                 self.pelipoyta.loggaa(f"{pelaaja.nimi} luovutti.")
                 pelaaja.valinta = 4 
                 pelaaja.folded = True

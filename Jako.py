@@ -19,7 +19,7 @@ class Jako:
         self.vaihtoindeksit = None
 
         self.pottiaJaljella = 0
-        self.showdownOdottaa = True if self.pelipoyta.simulointi == False else False
+        self.showdownOdottaa = True if self.pelipoyta.simulointi is None else False
         self.showdownValmis = False
         self.voittajalista = []
 
@@ -261,7 +261,7 @@ class Jako:
         vaihdetaan = pelaaja.ai.vaihdaKortit()  #Indexit jotta animaatio osuu oikeaan korttiin?
         vaihtoindeksit = []
 
-        if self.pelipoyta.simulointi is False:  #vaihtoindeksit GUI:ta varten
+        if self.pelipoyta.simulointi is None:  #vaihtoindeksit GUI:ta varten
             vaihtoindeksit = [i for i, kasikortti in enumerate(pelaaja.kasikortit) if kasikortti in vaihdetaan]
 
         for Kortti in vaihdetaan:
@@ -277,7 +277,6 @@ class Jako:
 
     def paivitaVaihdot(self):
         self.pelipoyta.pelivaihe = 2
-        self.pelipoyta.paivitaNakymat()
 
         if self.vaihtoOdottaa:
             assert self.vaihtoPelaaja is not None
@@ -288,6 +287,8 @@ class Jako:
             self.vastaanotaVaihdot(self.vaihtoindeksit)  #GUI:ssa valinta on tehty jos ei ollut None
             self.vaihtoindeksit = None
             return
+
+        self.pelipoyta.paivitaNakymat()
 
         if self.vaihtoVuoro > len(self.pelaajat):  #Kaikki pelaajat ovat vaihtaneet, siirrytään seuraavaan vaiheeseen
             self.pelipoyta.pelivaihe = 3
@@ -309,6 +310,7 @@ class Jako:
         #Ihmispelaajan vuoro
         self.vaihtoOdottaa = True
         self.vaihtoPelaaja = vuorossa
+        self.pelipoyta.paivitaNakymat()
         self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "pyydaVaihdot", "pelaaja": vuorossa.nimi})
         return
 
@@ -341,7 +343,7 @@ class Jako:
 
         self.pelipoyta.paivitaNakymat()
         self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "aloitaShowdown"})
-        if self.pelipoyta.simulointi == False:
+        if self.pelipoyta.simulointi is None:
             self.showdownOdottaa = True  
 
     def paivitaShowdown(self):
@@ -388,7 +390,7 @@ class Jako:
         self.pelipoyta.paivitaNakymat()
         self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "showdownData", "showdownData": showdownData})
 
-        if self.pelipoyta.simulointi == False:
+        if self.pelipoyta.simulointi is None:
             self.showdownOdottaa = True
         
 

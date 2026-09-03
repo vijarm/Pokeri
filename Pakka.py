@@ -29,6 +29,7 @@ class Pakka:
             for i in range(pelaajia):
                 kadet[i].append(self.kortit.pop())
         return kadet
+    
 
 class Kortti:
     def __init__(self, maa, numero, alaspain=False):
@@ -50,11 +51,27 @@ class Kortti:
             and self.numero == other.numero
         )
 
+    def to_dict(self):
+        return {
+            "maa": self.maa,
+            "numero": self.numero,
+            "alaspain": self.alaspain
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls(
+            maa=data["maa"],
+            numero=data["numero"],
+            alaspain=data.get("alaspain", False)
+        )
+
     def toString(self):
         print(self.maa, self.numero)
 
     def nollaa(self):
         self.alaspain = False
+
 
 
     

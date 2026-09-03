@@ -31,7 +31,7 @@ class Pelaaja:
         self.folded: bool = False
         self.maksettuJakoon: int = 0
         self.maksettuPanostukseen: int = 0
-        self.valinta: int = 0  # 1 = check/call, 2 = raise, 3 = fold
+        self.valinta: int = 0  # 1 = check/call, 2 = raise, 3 = big raise, 4 = fold
         self.vaihtoja: int | None = None
     
     def __str__(self):
@@ -165,6 +165,72 @@ class PelaajaNakyma:
         self.muutPelaajat = []
         for pelaaja in muidenJarjestys:
             self.muutPelaajat.append(MuutNakee(pelaaja, pelipoyta))
+
+
+    def to_dict(self):
+        return {
+            "nimi": self.nimi,
+            "aktiivinen": self.aktiivinen,
+            "kasikortit": [kortti.to_dict() for kortti in self.kasikortit],
+            "chips": self.chips,
+            "allin": self.allin,
+            "maksettuJakoon": self.maksettuJakoon,
+            "maksettuPanostukseen": self.maksettuPanostukseen,
+            "valinta": self.valinta,
+            "vaihtoja": self.vaihtoja,
+
+            "pelivaihe": self.pelivaihe,
+            "kierros": self.kierros,
+            "jakaja": self.jakaja,
+            "log": self.log.copy(),
+
+            "potti": self.potti,
+            "mukanaPotissa": (self.mukanaPotissa.copy() if self.mukanaPotissa is not None else None),
+            "panos": self.panos,
+
+            "pelaajaVuorossa": self.pelaajaVuorossa,
+            "suurinKorotus": self.suurinKorotus,
+            "maksettavaa": self.maksettavaa,
+            "pieniKorotus": self.pieniKorotus,
+            "suuriKorotus": self.suuriKorotus,
+            "folded": self.folded,
+
+            "muutPelaajat": [pelaaja.to_dict() for pelaaja in self.muutPelaajat]
+        }
+
+    @classmethod
+    def from_dict(cls, data):
+        obj = cls.__new__(cls)
+
+        obj.nimi = data["nimi"]
+        obj.aktiivinen = data["aktiivinen"]
+        obj.kasikortit = [Kortti.from_dict(kortti) for kortti in data["kasikortit"]]
+        obj.chips = data["chips"]
+        obj.allin = data["allin"]
+        obj.maksettuJakoon = data["maksettuJakoon"]
+        obj.maksettuPanostukseen = data["maksettuPanostukseen"]
+        obj.valinta = data["valinta"]
+        obj.vaihtoja = data["vaihtoja"]
+
+        obj.pelivaihe = data["pelivaihe"]
+        obj.kierros = data["kierros"]
+        obj.jakaja = data["jakaja"]
+        obj.log = data["log"].copy()
+
+        obj.potti = data["potti"]
+        obj.mukanaPotissa = (data["mukanaPotissa"].copy() if data["mukanaPotissa"] is not None else None)
+        obj.panos = data["panos"]
+
+        obj.pelaajaVuorossa = data["pelaajaVuorossa"]
+        obj.suurinKorotus = data["suurinKorotus"]
+        obj.maksettavaa = data["maksettavaa"]
+        obj.pieniKorotus = data["pieniKorotus"]
+        obj.suuriKorotus = data["suuriKorotus"]
+        obj.folded = data["folded"]
+
+        obj.muutPelaajat = [MuutNakee.from_dict(pelaaja) for pelaaja in data["muutPelaajat"]]
+
+        return obj
      
 
 class MuutNakee:
@@ -186,6 +252,37 @@ class MuutNakee:
             self.kasikortit = [Kortti("muu", 0, alaspain = True) for _ in pelaaja.kasikortit]
         else: self.kasikortit = []
 
+    def to_dict(self):
+        return {
+            "nimi": self.nimi,
+            "tyyppi": self.tyyppi,
+            "aktiivinen": self.aktiivinen,
+            "chips": self.chips,
+            "allin": self.allin,
+            "folded": self.folded,
+            "maksettuJakoon": self.maksettuJakoon,
+            "maksettuPanostukseen": self.maksettuPanostukseen,
+            "valinta": self.valinta,
+            "vaihtoja": self.vaihtoja,
+            "kasikortit": [kortti.to_dict() for kortti in self.kasikortit]
+        }
 
+    @classmethod
+    def from_dict(cls, data):
+        obj = cls.__new__(cls)
+
+        obj.nimi = data["nimi"]
+        obj.tyyppi = data["tyyppi"]
+        obj.aktiivinen = data["aktiivinen"]
+        obj.chips = data["chips"]
+        obj.allin = data["allin"]
+        obj.folded = data["folded"]
+        obj.maksettuJakoon = data["maksettuJakoon"]
+        obj.maksettuPanostukseen = data["maksettuPanostukseen"]
+        obj.valinta = data["valinta"]
+        obj.vaihtoja = data["vaihtoja"]
+        obj.kasikortit = [Kortti.from_dict(kortti) for kortti in data["kasikortit"]]
+
+        return obj
 
         

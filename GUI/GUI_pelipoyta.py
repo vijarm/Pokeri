@@ -62,83 +62,90 @@ class GUI_pelipoyta:
         
         if event.type == pygame.MOUSEBUTTONDOWN:
             if self.poistu_rect.collidepoint(event.pos):
-                self.lisaaKomento("poistu", self.nakyma.nimi)
+                self.lisaaKomento("poistu_pelipoydasta", self.nakyma.nimi, {}, oma_engine = True)
                 return
     
         self.valintapaneeli.handle_event(event)
+
+    def resetoi(self):
+        self.animaatiot.clear()
+        self.valintapaneeli.resetoi()
 
     def asetaNakyma(self, uusinakyma):
         self.nakyma = uusinakyma
         self.valintapaneeli.nakyma = uusinakyma
 
-    def handle_tapahtuma(self, tapahtuma):
-        if tapahtuma["tapahtuma"] == "fold_voitto":
+    def handle_tapahtuma(self, tiedot):
+        if tiedot["tapahtuma"] == "fold_voitto":
             self.valintapaneeli.mode = "fold_voitto"
-            self.valintapaneeli.showdownData = tapahtuma["showdownData"]
+            self.valintapaneeli.showdownData = tiedot["showdownData"]
 
-        if tapahtuma["tapahtuma"] == "jaaKortit":
+        if tiedot["tapahtuma"] == "jaaKortit":
             self.valintapaneeli.showdownData = None
             self.valintapaneeli.mode = "odottaa"
             self.jaaKortit()
 
-        if tapahtuma["tapahtuma"] == "panostus":
+        if tiedot["tapahtuma"] == "panostus":
             self.valintapaneeli.mode = "odottaa"
-            if tapahtuma["valinta"] == 4:  #fold
-                self.foldaa(tapahtuma["pelaaja"])
+            if tiedot["valinta"] == 4:  #fold
+                self.foldaa(tiedot["pelaaja"])
             else:
-                self.pelaajaIlmoitus(tapahtuma["pelaaja"], tapahtuma["ilmoitus"])
+                self.pelaajaIlmoitus(tiedot["pelaaja"], tiedot["ilmoitus"])
 
-        if tapahtuma["tapahtuma"] == "pyydaPanos":
-            if tapahtuma["pelaaja"] == self.nakyma.nimi:
+        if tiedot["tapahtuma"] == "pyydaPanos":
+            if tiedot["pelaaja"] == self.nakyma.nimi:
                 self.valintapaneeli.mode = "panostus"
             else:
                 self.valintapaneeli.mode = "odottaa"
 
-        if tapahtuma["tapahtuma"] == "pyydaVaihdot":
-            if tapahtuma["pelaaja"] == self.nakyma.nimi:
+        if tiedot["tapahtuma"] == "pyydaVaihdot":
+            if tiedot["pelaaja"] == self.nakyma.nimi:
                 self.valintapaneeli.mode = "vaihdot"
             else:
                 self.valintapaneeli.mode = "odottaa"
 
-        if tapahtuma["tapahtuma"] == "korttivaihto":
+        if tiedot["tapahtuma"] == "korttivaihto":
 
-            self.vaihdaKortit(tapahtuma["pelaaja"], tapahtuma["vaihtoindeksit"])
+            self.vaihdaKortit(tiedot["pelaaja"], tiedot["vaihtoindeksit"])
 
             teksti = ""
-            if len(tapahtuma["vaihtoindeksit"]) == 1:
+            if len(tiedot["vaihtoindeksit"]) == 1:
                 teksti = "Vaihdan 1 kortin!"
-            elif len(tapahtuma["vaihtoindeksit"]) == 0:
+            elif len(tiedot["vaihtoindeksit"]) == 0:
                 teksti = "En vaihda mitään!"
             else: 
-                teksti = f"Vaihdan {len(tapahtuma["vaihtoindeksit"])} korttia!"
+                teksti = f"Vaihdan {len(tiedot["vaihtoindeksit"])} korttia!"
 
-            self.pelaajaIlmoitus(tapahtuma["pelaaja"], teksti)
+            self.pelaajaIlmoitus(tiedot["pelaaja"], teksti)
 
-        if tapahtuma["tapahtuma"] == "aloitaShowdown":
+        if tiedot["tapahtuma"] == "aloitaShowdown":
             self.valintapaneeli.showdownData = None
             self.valintapaneeli.mode = "showdown"
 
-        if tapahtuma["tapahtuma"] == "showdownData":
-            self.valintapaneeli.showdownData = tapahtuma["showdownData"]
+        if tiedot["tapahtuma"] == "showdownData":
+            self.valintapaneeli.showdownData = tiedot["showdownData"]
 
-        if tapahtuma["tapahtuma"] == "pelaajaTippui":
-            self.yleisIlmoitus(2.5, tapahtuma["ilmoitus"])
-            self.pelaajaIlmoitus(tapahtuma["pelaaja"], "Se oli siinä!")
+        if tiedot["tapahtuma"] == "pelaajaTippui":
+            self.yleisIlmoitus(2.5, tiedot["ilmoitus"])
+            self.pelaajaIlmoitus(tiedot["pelaaja"], "Se oli siinä!")
 
-        if tapahtuma["tapahtuma"] == "pelaajailmoitus":
+        if tiedot["tapahtuma"] == "pelaajailmoitus":
             self.valintapaneeli.mode = "odottaa"
-            self.pelaajaIlmoitus(tapahtuma["pelaaja"], tapahtuma["ilmoitus"])
+            self.pelaajaIlmoitus(tiedot["pelaaja"], tiedot["ilmoitus"])
 
-        if tapahtuma["tapahtuma"] == "yleisilmoitus":
-            self.yleisIlmoitus(1.8, tapahtuma["ilmoitus"])
+        if tiedot["tapahtuma"] == "yleisilmoitus":
+            self.yleisIlmoitus(1.8, tiedot["ilmoitus"])
 
-        if tapahtuma["tapahtuma"] == "voittajaLoytyi":
-            self.valintapaneeli.ilmoitus = tapahtuma["ilmoitus"]
-            self.pelaajaIlmoitus(tapahtuma["pelaaja"], "JII HAA!!")
+        if tiedot["tapahtuma"] == "voittajaLoytyi":
+            self.valintapaneeli.ilmoitus = tiedot["ilmoitus"]
+            self.pelaajaIlmoitus(tiedot["pelaaja"], "JII HAA!!")
             self.valintapaneeli.mode = "voittajaLoytyi"
 
                                        
     def draw(self): 
+
+        if self.nakyma is None:
+            return
         
         pygame.display.set_caption(
             "POKERISIMULAATTORI"
@@ -236,6 +243,15 @@ class ValintaPaneeli:
         self.jatkaNappi_rect = pygame.Rect(585, 540, 110, 35)
 
 
+    def resetoi(self):
+        self.showdownData = None
+        self.ilmoitus = []
+        self.valitutKortit = []
+        self.vaihdettavat = None
+        self.valinta = None
+        self.mode = "odottaa"
+
+
     def handle_event(self, event):
 
         if event.type != pygame.MOUSEBUTTONDOWN:
@@ -299,8 +315,7 @@ class ValintaPaneeli:
             if event.type == pygame.MOUSEBUTTONDOWN:
 
                 if self.jatkaNappi_rect.collidepoint(event.pos):
-                    self.lisaaKomento("peli_ohi", self.nakyma.nimi)
-                    #Engine vaihtaa valikkoon
+                    self.lisaaKomento("peli_ohi", None)
 
                 
     def draw(self, surface):
@@ -403,7 +418,7 @@ class ValintaPaneeli:
     
                     draw_centered_text(surface,
                         self.ilmoitus[rivi],
-                        (rect.centerx, rect.y + 15 + (rivi * 25)), medium_font)
+                        (rect.centerx, rect.y + 25 + (rivi * 25)), medium_font)
 
                 pygame.draw.rect(surface, GOLD, self.jatkaNappi_rect)
                 draw_centered_text(surface, "JATKA", self.jatkaNappi_rect.center, font, BLACK)
@@ -442,7 +457,7 @@ class ValintaPaneeli:
                 if nakyma.maksettavaa == 0:
                     return "Check!"
                 else:
-                    return f"Maksa {nakyma.maksettavaa}"
+                    return f"Maksa {min(nakyma.maksettavaa, nakyma.chips)}"
 
             if valinta == "pieniKorotus":
                 return f"Korota {nakyma.pieniKorotus}"

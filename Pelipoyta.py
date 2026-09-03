@@ -1,15 +1,18 @@
 from Pakka import Pakka
 from Pelaaja import Pelaaja, PelaajaNakyma
 from Jako import Jako
+from Pakka import Kortti
 from random import randint
 
 class Pelipoyta:
-    def __init__(self, pelaajat: list, simulointi = False):
+    def __init__(self, pelaajat: list, paivitys_to_gui=None, simulointi=None):
         self.PerusPakka = Pakka()
         self.PerusPakka.luo_pakka()
 
         self.pelipakka = Pakka()
         self.pelipakka.kortit = self.PerusPakka.kortit.copy()
+
+        self.paivitys_to_gui = paivitys_to_gui
         
         self.pelaajat = pelaajat
         self.kierros: int = 0
@@ -25,7 +28,6 @@ class Pelipoyta:
 
         self.simulointi = simulointi
         self.log = []
-        self.paivitykset = []
     
 
     def paivitaTila(self):
@@ -169,30 +171,19 @@ class Pelipoyta:
                 self.panos += 200 #väliin jäävillä 21 ja 25 +200
 
     def loggaa(self, teksti: str):
-        if not self.simulointi:
+        if self.simulointi is None:
             self.log.append(teksti)
 
-
-    def haePaivitykset(self):
-        paivitykset = list(self.paivitykset)
-        self.paivitykset.clear()
-        return paivitykset
 
     def paivitaNakymat(self):  #Päivitetään näkymä, jota käytetään GUI:ssa ja jolla rajataan mitä kukakin näkee
         for pelaaja in self.pelaajat:
             pelaaja.nakyma = PelaajaNakyma(pelaaja, self)
+            #print("Ovat samoja:", pelaaja.nakyma.to_dict() == PelaajaNakyma.from_dict(pelaaja.nakyma.to_dict()).to_dict())
             
-            #TÄHÄN MYÖHEMMIN: Jos pelaaja = nettipelaaja client -> lähetä uusi näkymä
 
-    def paivitaGUI(self, kohde, tapahtuma):  #Tää nyt vaan lisää tapahtuman per pelaaja, mutta jatkossa sen pitäis lähettää tms tilanteen mukaan
-        if not self.simulointi:
-            for p in self.pelaajat:
-                if p.tyyppi == "Ihminen":
-                    self.paivitykset.append(PelitilaUpdate(kohde, tapahtuma, p.nakyma))
+    def paivitaGUI(self, tyyppi, tiedot):  
+        if self.simulointi is None:
+            for pelaaja in self.pelaajat:
+                if pelaaja.ai is None:
+                    self.paivitys_to_gui(pelaaja, tyyppi, tiedot, pelaaja.nakyma)
 
-
-class PelitilaUpdate:
-    def __init__(self, kohde, tapahtuma, nakyma):
-        self.kohde = kohde
-        self.tapahtuma = tapahtuma
-        self.uusinakyma = nakyma

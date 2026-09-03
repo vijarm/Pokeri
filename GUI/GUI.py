@@ -5,7 +5,7 @@ from . import settings
 from .GUI_pelipoyta import GUI_pelipoyta
 from .GUI_valikko import GUI_valikko
 
-from transport import LocalTransport, NetworkTransport
+from viestit import Komento
 
 
 WIDTH = settings.WIDTH
@@ -27,19 +27,15 @@ large_font = settings.large_font
 title_font = settings.title_font
 
 class GUI:
-    def __init__(self, pelaaja, peli, transport):
+    def __init__(self, pelaaja, transport):
         pygame.init()
-        self.peli = peli
         self.transport = transport
         self.pelaaja = pelaaja
-        self.pelipoyta = peli.pelipoyta
-        self.nakyma = pelaaja.nakyma
+        self.nakyma = None
         self.mode = "valikko"
 
         self.paivitysjono = []  #Enginestä tulleet
         self.uusinPaivitys = None  
-
-        self.komentojono = []  #Engineen menevät
 
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
@@ -58,57 +54,76 @@ class GUI:
                 pygame.quit()
                 sys.exit()
 
-            if self.peli.mode == "valikko":
+            if self.mode == "valikko":
                 self.GUI_valikko.handle_event(event)
 
-            elif self.peli.mode == "pelipoyta":
+            elif self.mode == "pelipoyta":
                 self.GUI_pelipoyta.handle_event(event)
 
 
     def draw(self):
 
-        if self.peli.mode == "valikko":
+        if self.mode == "valikko":
             self.GUI_valikko.draw()
 
-        elif self.peli.mode == "pelipoyta":
+        elif self.mode == "pelipoyta":
             self.GUI_pelipoyta.draw()
 
         pygame.display.flip()
 
     def paivita(self, dt):  #Hakee enginen tuottamat pelitilannemuutokset ja uudet pelinäkymät
 
-        paivitykset = self.peli.haeMenuPaivitykset()
-        paivitykset += self.transport.receive_for_gui()
-        for paivitys in paivitykset:
+        paivitykset = self.transport.receive_for_gui()
 
+        for p in paivitykset:
+            print("TRANSPORTISTA TULI:", p.tyyppi, p.tiedot)
+
+        self.paivitysjono.extend(paivitykset)
+
+        for paivitys in self.paivitysjono:
             if paivitys.tyyppi == "vaihda_gui_mode":
-                self.mode = paivitys.tiedot
-            
-            elif paivitys.tyyppi == "uusipeli":
-                self.pelipoyta = paivitys.tiedot  # Tää poistuu, mutta eka pitää päästä eroon tosta peli.mode
+                self.mode = paivitys.tiedot["uusi_mode"]
+                self.paivitysjono.remove(paivitys)
 
-            else: 
+                if self.mode == "valikko":
+                    self.GUI_pelipoyta.resetoi()
+
+                break
+
+            elif paivitys.tyyppi == "host_disconnect" or paivitys.tyyppi == "host_perui":
+                self.mode = "valikko"
+                self.lisaaKomento("host_disconnect", self.pelaaja.nimi, {}, oma_engine=True)
+                self.GUI_pelipoyta.resetoi()
                 self.GUI_valikko.handle_paivitys(paivitys)
 
-        if self.peli.mode == "valikko":
-            self.GUI_valikko.paivita()
+        if self.paivitysjono and not self.GUI_pelipoyta.animaatiot:  #Jonossa tehtäviä ja animaatio ei käynnissä, otetaan uusi
+            self.uusinPaivitys = self.paivitysjono.pop(0)
+            print("OTETTIIN KÄSITTELYYN:", self.uusinPaivitys.tyyppi)
 
+            if self.uusinPaivitys.tyyppi == "aloita_peli":
+
+                self.GUI_pelipoyta.resetoi()
+                self.GUI_valikko.liityOnline.resetoi()
+                self.GUI_valikko.mode = "main"
+                self.asetaNakyma(self.uusinPaivitys.uusinakyma)
+                self.mode = self.uusinPaivitys.tiedot["uusi_mode"]
+                self.uusinPaivitys = None
+
+            elif self.mode == "valikko":
+                self.GUI_valikko.handle_paivitys(self.uusinPaivitys)
+                self.uusinPaivitys = None
+
+            elif self.uusinPaivitys.tyyppi == "pelipoyta":
+                self.GUI_pelipoyta.handle_tapahtuma(self.uusinPaivitys.tiedot)
+
+
+        if self.mode == "valikko":
+
+            self.GUI_valikko.paivita()
+            self.GUI_pelipoyta.animaatiot.clear()
 
             
         if self.mode == "pelipoyta":
-
-            paivitykset = self.pelipoyta.haePaivitykset()
-            self.paivitysjono.extend(paivitykset)
-
-            if self.paivitysjono and not self.GUI_pelipoyta.animaatiot:  #Jonossa tehtäviä ja animaatio ei käynnissä, otetaan uusi
-                self.uusinPaivitys = self.paivitysjono.pop(0)
-
-                if self.uusinPaivitys.kohde == "pelipoyta":
-                    self.GUI_pelipoyta.handle_tapahtuma(self.uusinPaivitys.tapahtuma)
-
-                else:  #väliaikainen?
-                    self.asetaNakyma(self.uusinPaivitys.nakyma)
-                    self.uusinPaivitys = None
 
             if self.GUI_pelipoyta.animaatiot:
                 for animaatio in self.GUI_pelipoyta.animaatiot:
@@ -119,26 +134,24 @@ class GUI:
                 self.asetaNakyma(self.uusinPaivitys.uusinakyma)
                 self.uusinPaivitys = None
 
-    def haeKomennot(self):
-            komennot = list(self.komentojono)
-            self.komentojono.clear()
-            return komennot
+
             
-    def lisaaKomento(self, tapahtuma, pelaaja, tiedot={}):
+    def lisaaKomento(self, tapahtuma, pelaaja, tiedot={}, oma_engine=False):
         komento = Komento(tapahtuma, pelaaja, tiedot)
-        self.komentojono.append(komento)
+
+        if tapahtuma == "poistu_pelipoydasta" or tapahtuma == "peli_ohi": #Tapahtuu välittömästi käymättä enginen kautta
+            self.mode = "valikko"
+
+        if oma_engine:
+            self.transport.send_to_own_engine(komento)
+
+        else: 
+            self.transport.send_to_engine(komento)  #Normaalisti käytetään tätä, mutta parissa kohtaa clientin täytyy ohittaa
+
+    
 
 
     def asetaNakyma(self, uusinakyma):
         self.nakyma = uusinakyma
         self.GUI_pelipoyta.asetaNakyma(uusinakyma)
-
-
-
-
-class Komento:
-    def __init__(self, tapahtuma, pelaaja, tiedot={}):
-        self.tapahtuma = tapahtuma
-        self.pelaaja = pelaaja
-        self.tiedot = tiedot
 

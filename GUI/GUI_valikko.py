@@ -46,7 +46,10 @@ class GUI_valikko:
         self.simulointiPelaajat = [None, None, None, None]
         self.pelipoyta = None
         self.muokkaus_popup = None
+        self.simulointiTulos = None
+
         self.liityOnline = LiityOnline(self)
+        self.salliLiittyminen = False
         
 
         self.mainNapit = []
@@ -60,8 +63,10 @@ class GUI_valikko:
             self.pelaajavalintaNapit[i].append(Nappi(WIDTH-315, 145+(i*115), 100, 50, "poista", "POISTA", RED, BLACK))
 
         self.pelaajavalintaMuut = []
-        self.pelaajavalintaMuut.append(Nappi(WIDTH//2 - 160, HEIGHT - 140, 140, 60, "aloita_peli", "ALOITA", GOLD, BLACK, BLACK, large_font))
-        self.pelaajavalintaMuut.append(Nappi(WIDTH//2 + 20, HEIGHT - 140, 140, 60, "palaa_menuun", "PERUUTA", GRAY, BLACK, BLACK, large_font))
+        self.pelaajavalintaMuut.append(Nappi(WIDTH//2 - 160, HEIGHT - 120, 140, 60, "aloita_peli", "ALOITA", GOLD, BLACK, BLACK, large_font))
+        self.pelaajavalintaMuut.append(Nappi(WIDTH//2 + 20, HEIGHT - 120, 140, 60, "palaa_menuun", "PERUUTA", GRAY, BLACK, BLACK, large_font))
+        self.pelaajavalintaMuut.append(Nappi(WIDTH//2 - 480, HEIGHT - 120, 280, 60, "salli_liittyminen", "SALLI NETTIPELAAJAT", LIGHT_BLUE, BLACK, BLACK, large_font))
+        self.pelaajavalintaMuut.append(Nappi(WIDTH//2 - 480, HEIGHT - 120, 280, 60, "esta_liittyminen", "ESTÄ UUDET PELAAJAT", LIGHT_RED, BLACK, BLACK, large_font))
 
         self.mode = "main"
 
@@ -72,13 +77,49 @@ class GUI_valikko:
 
 
     def handle_paivitys(self, paivitys):
-        if paivitys.tyyppi == "uusipelaaja":
-            if self.mode == "simuloi":
-                self.simulointiPelaajat[paivitys.tiedot["indeksi"]] = paivitys.tiedot["pelaaja"]
-
-            else:
-                self.pelaajat[paivitys.tiedot["indeksi"]] = paivitys.tiedot["pelaaja"]
+        if paivitys.tyyppi == "uusipelaajalista":
+            self.pelaajat = paivitys.tiedot["pelaajat"]
             return
+
+        elif paivitys.tyyppi == "uusi_simulointi_pelaaja":
+            self.simulointiPelaajat[paivitys.tiedot["indeksi"]] = paivitys.tiedot["pelaaja"]
+
+        elif paivitys.tyyppi == "uusi_client":
+            self.pelaajat = paivitys.tiedot["pelaajat"]
+            self.muokkaus_popup = IlmoitusPopup(self.screen, f"Uusi pelaaja {paivitys.tiedot["nimi"]} liittyi!", GRAY)   
+
+
+        elif paivitys.tyyppi == "client_poistui":
+            self.pelaajat = paivitys.tiedot["pelaajalista"]
+            self.muokkaus_popup = IlmoitusPopup(self.screen, f"Pelaaja {paivitys.tiedot['pelaaja']} poistui!", GRAY)
+
+        elif paivitys.tyyppi == "liittyminen_ok":
+            self.liityOnline.connected = True
+            self.liityOnline.mukanaNimella = paivitys.tiedot["nimi"]
+
+
+        elif paivitys.tyyppi == "liittyminen_sallittu":
+            self.salliLiittyminen = True
+            self.muokkaus_popup = IlmoitusPopup(self.screen, "Pelaajat voivat nyt liittyä!", LIGHT_GRAY)
+            pass
+
+        elif paivitys.tyyppi == "host_epaonnistui":
+            self.salliLiittyminen = False
+            self.muokkaus_popup = IlmoitusPopup(self.screen, "Hostauksen aloittaminen epäonnistui!", LIGHT_RED)
+
+        elif paivitys.tyyppi == "liittyminen_estetty":
+            self.salliLiittyminen = False
+            self.muokkaus_popup = IlmoitusPopup(self.screen, "Uusien pelaajien liittyminen estetty!", LIGHT_GRAY)
+
+        elif paivitys.tyyppi == "client_epaonnistui":
+            self.liityOnline.connected = False
+            self.liityOnline.tila = "liity_valikko"
+            self.liityOnline.popup = IlmoitusPopup(self.screen, f"Yhdistäminen epäonnistui: {paivitys.tiedot["virhe"]}")
+
+        elif paivitys.tyyppi == "host_disconnect" or paivitys.tyyppi == "host_perui":  #GUI:n puolella tehdään jo osa toimista
+            self.liityOnline.resetoi()            
+            self.mode = "liity"
+            self.liityOnline.popup = IlmoitusPopup(self.screen, "Yhteys pelin hostiin katkesi!")
 
 
 
@@ -162,10 +203,14 @@ class GUI_valikko:
                     self.muokkaus_popup = IlmoitusPopup(self.screen, "Tarvitaan vähintään 2 pelaajaa!")
                     return
 
-                self.lisaaKomento("aloita_peli", self.pelaajat)
+                self.lisaaKomento("aloita_peli", self.pelaajat)  #Pelaajat kyllä nyt tulee enginestä eikä enää guista
+                self.salliLiittyminen = False
+                self.pelaajat = [self.oma_pelaaja, None, None, None]
                 self.mode = "main"
 
             elif valinta == "palaa_menuun":
+                self.salliLiittyminen = False
+                self.lisaaKomento("sulje_host", self.oma_pelaaja)
                 self.mode = "main"
 
             elif valinta == "lisaa":
@@ -178,8 +223,15 @@ class GUI_valikko:
 
             elif valinta == "poista":
                 assert pelaajaindeksi is not None
-                self.pelaajat[pelaajaindeksi] = None
+                self.lisaaKomento("poista_pelaaja", self.pelaajat[pelaajaindeksi], {"indeksi": pelaajaindeksi})
                 return
+   
+            elif valinta == "salli_liittyminen":
+                self.lisaaKomento("salli_liittyminen", self.oma_pelaaja)
+
+            elif valinta == "esta_liittyminen":
+                self.lisaaKomento("esta_liittyminen", self.oma_pelaaja)
+
 
         elif self.mode == "simuloi":
             if valinta == "aloita_peli":
@@ -187,8 +239,8 @@ class GUI_valikko:
                     self.muokkaus_popup = IlmoitusPopup(self.screen, "Tarvitaan vähintään 2 pelaajaa!")
                     return
 
-                self.lisaaKomento("aloita_peli", self.simulointiPelaajat)  #Tietty eri moodilla sit jatkossa
-                self.mode = "main"
+                self.lisaaKomento("aloita_simulointi", self.simulointiPelaajat)  #Tietoihin asetukset !
+                #self.mode = "simulointiTulos"
 
             elif valinta == "palaa_menuun":
                 self.mode = "main"
@@ -213,7 +265,7 @@ class GUI_valikko:
 
     def paivita(self):
         if self.mode == "pelaajavalinta" or self.mode == "simuloi":
-            self.paivitaPelaajaNapit()
+            self.paivitaValintaNapit()
     
     
     def draw(self): 
@@ -237,7 +289,7 @@ class GUI_valikko:
             draw_pelaajavalinta(self, simulointi=True)
 
 
-    def paivitaPelaajaNapit(self):
+    def paivitaValintaNapit(self):
         pelaajat = self.pelaajat if self.mode != "simuloi" else self.simulointiPelaajat
 
         for i, napit in enumerate(self.pelaajavalintaNapit):
@@ -251,10 +303,27 @@ class GUI_valikko:
                 napit[1].enabled = True
                 napit[2].enabled = False
 
+            elif pelaajat[i].tyyppi == "client":
+                napit[0].enabled = False
+                napit[1].enabled = False
+                napit[2].enabled = True
+
             else:
                 napit[0].enabled = False
                 napit[1].enabled = True
                 napit[2].enabled = True
+
+        if self.mode == "simuloi":
+            next(nappi for nappi in self.pelaajavalintaMuut if nappi.nimi == "salli_liittyminen").enabled = False
+            next(nappi for nappi in self.pelaajavalintaMuut if nappi.nimi == "esta_liittyminen").enabled = False
+
+        else:
+            if self.salliLiittyminen == True:
+                next(nappi for nappi in self.pelaajavalintaMuut if nappi.nimi == "salli_liittyminen").enabled = False
+                next(nappi for nappi in self.pelaajavalintaMuut if nappi.nimi == "esta_liittyminen").enabled = True
+            else:
+                next(nappi for nappi in self.pelaajavalintaMuut if nappi.nimi == "salli_liittyminen").enabled = True
+                next(nappi for nappi in self.pelaajavalintaMuut if nappi.nimi == "esta_liittyminen").enabled = False
 
 
 
@@ -299,10 +368,20 @@ def draw_pelaajavalinta(gui_valikko, simulointi=False):
             gui_valikko.pelaajavalintaNapit[i][0].draw(screen)  #lisää
 
     for nappi in gui_valikko.pelaajavalintaMuut:
+        if nappi.nimi == "salli_liittyminen":
+            if simulointi == True:
+                continue
+            else:
+                if gui_valikko.salliLiittyminen == True:
+                    continue
+                nappi.draw(screen)
+
         nappi.draw(screen)
+
 
     if gui_valikko.muokkaus_popup:
         gui_valikko.muokkaus_popup.draw()
+
 
 
 def draw_korttiviuhka(gui_valikko, kortit, x, y):
@@ -324,32 +403,76 @@ class LiityOnline:
 
         self.ip = ""
         self.connected = False
+        self.mukanaNimella = ""
+        self.tila = "liity_valikko"
 
         self.napit = []
         self.napit.append(Nappi(WIDTH//2 - 160, HEIGHT - 140, 140, 60, "liity_peliin", "LIITY", GOLD, BLACK, BLACK, large_font))
         self.napit.append(Nappi(WIDTH//2 + 20, HEIGHT - 140, 140, 60, "palaa_menuun", "PERUUTA", GRAY, BLACK, BLACK, large_font))
+        self.napit.append(Nappi(WIDTH//2 - 70, HEIGHT - 140, 140, 60, "peru_online", "PERUUTA", LIGHT_RED, BLACK, BLACK, large_font))
 
         self.nimiboksi = Tekstiboksi( (WIDTH // 2 - 110, 260, 260, 45), self.nimi)
-        self.ipboksi = Tekstiboksi( (WIDTH // 2 - 110, 430, 260, 45), "anna_ip", max_length=30)
+        self.ipboksi = Tekstiboksi( (WIDTH // 2 - 110, 430, 260, 45), "127.0.0.1", max_length=30)
+
+    def resetoi(self):
+        self.popup = None
+        self.ip = ""
+        self.connected = False
+        self.mukanaNimella = ""
+        self.tila = "liity_valikko"
 
     def draw(self):
         screen = self.screen
 
-        draw_centered_text(screen, "LIITY NETTIPELIIN", (WIDTH // 2, 60), pygame.font.SysFont("arial black", 48), BLACK)
+        if self.tila == "liity_valikko":
 
-        draw_panel(screen, (WIDTH // 2 - 300, 180, 600, 150))
-        draw_centered_text(screen, "Pelaajan nimi:", (WIDTH // 2, 225), large_font, WHITE)
-        self.nimiboksi.draw(screen)
+            draw_centered_text(screen, "LIITY NETTIPELIIN", (WIDTH // 2, 60), pygame.font.SysFont("arial black", 48), BLACK)
 
-        draw_panel(screen, (WIDTH // 2 - 300, 350, 600, 150))
-        draw_centered_text(screen, "IP-osoite:", (WIDTH // 2, 395), large_font, WHITE)
-        self.ipboksi.draw(screen)
+            draw_panel(screen, (WIDTH // 2 - 300, 180, 600, 150))
+            draw_centered_text(screen, "Pelaajan nimi:", (WIDTH // 2, 225), large_font, WHITE)
+            self.nimiboksi.draw(screen)
 
-        for nappi in self.napit:
-            nappi.draw(self.screen)
+            draw_panel(screen, (WIDTH // 2 - 300, 350, 600, 150))
+            draw_centered_text(screen, "IP-osoite:", (WIDTH // 2, 395), large_font, WHITE)
+            self.ipboksi.draw(screen)
+
+            self.napit[0].enabled = True  #Ei nyt mikään kaunein nappikujeilu, mutta toimii..
+            self.napit[1].enabled = True
+            self.napit[2].enabled = False
+
+            for nappi in self.napit:
+                nappi.draw(self.screen)
+
+        elif self.tila == "odottaa_pelia":
+
+            self.screen.fill(TABLE_DARK)
+
+            draw_centered_text(screen, "LIITY NETTIPELIIN", (WIDTH // 2, 60), pygame.font.SysFont("arial black", 48), BLACK)
+
+            draw_centered_text(self.screen, 
+                "ODOTETAAN NETTIPELIN ALKAMISTA", 
+                (WIDTH // 2, HEIGHT // 2 - 50), large_font, WHITE)
+
+            draw_centered_text(self.screen,
+                "YHTEYS HOSTIIN MUODOSTETTU!" if self.connected else "YHDISTETÄÄN...", 
+                (WIDTH // 2, HEIGHT // 2 + 20), medium_font, WHITE)
+
+            if self.mukanaNimella != "":
+                draw_centered_text(self.screen,
+                    f"LIITYTTY PELIIN NIMELLÄ {self.mukanaNimella}, ODOTETAAN ALOITUSTA...", 
+                    (WIDTH // 2, HEIGHT // 2 + 60), medium_font, WHITE)
+
+            self.napit[0].enabled = False
+            self.napit[1].enabled = False
+            self.napit[2].enabled = True
+
+            for nappi in self.napit:
+                nappi.draw(self.screen)
+
 
         if self.popup:
             self.popup.draw()
+
 
     def handle_event(self, event):
 
@@ -381,18 +504,31 @@ class LiityOnline:
 
     def handle_nappi(self, nappi):
         if nappi == "palaa_menuun":
+            self.resetoi()
             self.gui_valikko.mode = "main"
 
         if nappi == "liity_peliin":  # Ei luoda itse pelaaja-oliota vaan lähetetään hostille nimi
-            if len(self.nimiboksi.get()) < 3:
+            nimi = self.nimiboksi.get()
+            ip = self.ipboksi.get()
+
+            if len(nimi) < 3:
                 self.popup = IlmoitusPopup(self.screen, "Nimeen tarvitaan vähintään 3 merkkiä!")
                 return
 
-            if len(self.ipboksi.get()) < 8:
+            if len(ip) < 8:
                 self.popup = IlmoitusPopup(self.screen, "Tarkista ip-osoite!")
                 return
 
-            self.popup = IlmoitusPopup(self.screen, "Yhdistetään!", TABLE_GREEN)
+            self.tila = "odottaa_pelia" #laitetaan manuaalisesti tähän draw, koska peli voi pariksi sekunniksi jäätyä kun client connectaa, enkä nyt jaksa rakentaa siihen systeemiä joka ohittaa tämän.
+            self.draw()
+            pygame.display.flip()
+            self.lisaaKomento("liity_online", None, {"nimi": nimi, "ip": ip})
+
+
+        if nappi == "peru_online":
+            self.resetoi()
+            self.gui_valikko.mode = "main"
+            self.lisaaKomento("peru_online", None, {}, oma_engine=True)
 
 
 
@@ -440,7 +576,7 @@ class Tekstiboksi:
             self.teksti += pyperclip.paste()
 
         else:
-            if len(self.teksti) <= self.max_length:
+            if len(self.teksti) < self.max_length:
                 self.teksti += event.unicode
 
     def draw(self, screen):
@@ -471,6 +607,7 @@ class Muokkaus_popup:
         self.indeksi = indeksi
         self.lisaaKomento = gui_valikko.lisaaKomento
         self.suljetaan = False
+        self.simulointi = simulointi
 
         #Muokattavat arvot
         self.nimi = ""
@@ -577,15 +714,16 @@ class Muokkaus_popup:
         elif valinta == "tallenna":
             nimi = self.nimiboksi.teksti
 
+            if len(nimi) < 2:
+                self.popup = IlmoitusPopup(self.screen, "NIMEEN TARVITAAN VÄHINTÄÄN 3 MERKKIÄ")
+                return
+
             for pelaaja in self.pelaajat:  #Ei tuplanimiä
                 if pelaaja is None or pelaaja == self.muokattava:
                     continue
                 else:
                     if pelaaja.nimi == nimi:
                         self.popup = IlmoitusPopup(self.screen, "NIMI ON JO VARATTU")
-                        return
-                    elif len(nimi) < 2:
-                        self.popup = IlmoitusPopup(self.screen, "NIMEEN TARVITAAN VÄHINTÄÄN 3 MERKKIÄ")
                         return
 
             tiedot = {"nimi": nimi, 
@@ -596,14 +734,11 @@ class Muokkaus_popup:
                 "indeksi": self.indeksi}
 
             if self.muokattava == None:
-                self.lisaaKomento("luo_pelaaja", self.muokattava, tiedot)
+                if self.simulointi:
+                    self.lisaaKomento("luo_simulointi_pelaaja", self.muokattava, tiedot)
+                else:
+                    self.lisaaKomento("luo_pelaaja", self.muokattava, tiedot)
                 self.suljetaan = True
-                return
-
-            if self.oma_pelaaja:  #Jos nimeä on muokattu lähetetään tieto
-                if nimi != self.muokattava.nimi:
-                    self.lisaaKomento("muokkaa_pelaajaa", self.muokattava, tiedot)
-                self.suljetaan = True  
                 return
 
             else:
@@ -619,8 +754,8 @@ class IlmoitusPopup:
         self.teksti = teksti
         self.vari = vari
         self.suljetaan = False
-        self.rect = pygame.Rect(WIDTH // 2 - 200, HEIGHT // 2 - 120, 400, 200)
-        self.nappi = Nappi(self.rect.x + 100, self.rect.y + 115, 200, 60, "ok", "OK", GRAY, BLACK, BLACK, large_font)
+        self.rect = pygame.Rect(WIDTH // 2 - 320, HEIGHT // 2 - 120, 640, 200)
+        self.nappi = Nappi(WIDTH // 2 - 100, self.rect.y + 115, 200, 60, "ok", "OK", GRAY, BLACK, BLACK, large_font)
 
     def draw(self):
 
