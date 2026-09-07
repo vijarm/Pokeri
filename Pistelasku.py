@@ -39,6 +39,11 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
             poikkeavaMaa = next((maa for maa, maara in maat_counter.items() if maara == 1), None)  #Jos toista löytyy 1, on toista oltava 4
             if poikkeavaMaa:
                 vaihtosuositus.append([next(k for k in kasikortit if k.maa == poikkeavaMaa)])
+
+        #Jos kolme samaa maata
+        if sorted(maat_counter.values()) == [1,1,3] or sorted(maat_counter.values()) == [2,3]:
+            kolmen_maa = next((maa for maa, maara in maat_counter.items() if maara ==3))
+            vaihtosuositus.append([k for k in kasikortit if k.maa != kolmen_maa])
     
     #Suoran tarkistus
     if len(numero_counter) == 5:
@@ -141,7 +146,9 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
 
         if vaihtoja:
             yksittaiset = [k for k in kasikortit if k.numero in vertailukortit]
-            vaihtosuositus.append(yksittaiset)
+            yksittaiset.sort(key=lambda k: k.numero)
+            vaihtosuositus.append(yksittaiset)  #Vaihdetaan molemmat 'ylimääräiset'
+            vaihtosuositus.append([yksittaiset[0]])  #Vaihdetaan pienempi
             
         return {
             "kasinimi": "Kolmoset", 
@@ -269,10 +276,12 @@ def haeVoittaja(pelaajat: list) -> list:
             if voittaja[0]["vahvuus"] < pisteet["vahvuus"]:
                 voittaja = [pisteet]
     tulos.sort(key=lambda p: p["vahvuus"], reverse=True)
-    if len(voittaja) == 1:
-        print ("VOITTAJA!!! Pelin voitti", voittaja[0]["pelaaja"], "kädessään", voittaja[0]["kasinimi"])
-    else:
-        print ("OHHHHOHHHHHHHHH TASAPELI!!! KATSOS:", voittaja)
+
+    #if len(voittaja) == 1:
+        #print ("VOITTAJA!!! Pelin voitti", voittaja[0]["pelaaja"], "kädessään", voittaja[0]["kasinimi"])
+    #else:
+        #print ("OHHHHOHHHHHHHHH TASAPELI!!! KATSOS:", voittaja)
+    
     return voittaja  #Tämä palautettava muoto ei nyt ehkä ole selkein... 
 
 # Voimaluvut: (tunnus, vertailussa käytettävä vahvuusluku)

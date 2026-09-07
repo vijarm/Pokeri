@@ -15,7 +15,7 @@ class PanostusKierros:
         self.vuoro = 1
         self.valmis = False
         self.odottaaValintaa = False
-        self.panostusValinta = None
+        self.panostusValinta: str | None = None
         self.voittaja = None
         self.fold_voitto = False
 
@@ -71,8 +71,26 @@ class PanostusKierros:
                 return
 
             if self.pelaajaVuorossa.ai is not None:  #AI voi jatkaa suoraan
-                valinta = self.pelaajaVuorossa.pyydaPanostus(self.kierros)
+
+                state = None  #Näitä state juttuja tarvitaan vain koulutusvaiheessa, valmiin voisi laittaa pyydaPanostus alle
+                if self.pelaajaVuorossa.ai.luokka == "Koneoppinut":  
+                    ai = self.pelaajaVuorossa.ai
+
+                    if self.kierros == 1:  #Muut AI:t tekee nämä toimet panostusvalinnan yhteydessä, mutta koneoppinut ei (koulutusmoodissa)
+                        ai.vaihdetaan = ai.haeParasVaihto()  # Tämä päivittää myös self.arvioituVoimakkuus
+
+                    state = muodostaGameStateAI(self.pelaajaVuorossa, self.pelipoyta)
+
+                    valinta = ai.choose_action(state)
+
+                else:
+                    valinta = self.pelaajaVuorossa.pyydaPanostus(self.kierros)
+
                 self.kasittelePanostus(self.pelaajaVuorossa, valinta)
+
+                if self.pelaajaVuorossa.ai.luokka == "Koneoppinut":
+                    self.pelaajaVuorossa.ai.paatokset.append((state, self.pelaajaVuorossa.valinta))  #Valinta on voinut muuttua kasittelePanostuksen aikana, jos valinta ei ole ollut sallittu
+
                 self.vuoro += 1
                 self.pelipoyta.paivitaNakymat()
                 continue
@@ -84,69 +102,16 @@ class PanostusKierros:
                 self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "pyydaPanos", "pelaaja": self.pelaajaVuorossa.nimi})
                 return
 
-    '''
-    def suoritaKierros(self) -> Pelaaja | None:
-        if sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen, on jo all-in.
-            return None  #Jos vain max 1 pelaaja olisi panostamassa, panostuskierrosta ei tapahdu. 
 
-        vuoro = 1  #Aloitetaan jakajasta suoraavasta, joten aloitusvuoro on 1
-        print("Panostuskierros alkaa! Vuoro on", vuoro, "ja jakajaindex pelillä on", self.jako.jakaja)
-        self.pelipoyta.paivitaNakymat()
-        
-        while True:
-            self.pelaajaVuorossa = self.jako.pelaajat[(vuoro + self.jako.jakaja) % len(self.jako.pelaajat)] 
-            print("Vuoro", vuoro, "pelaaja:", self.pelaajaVuorossa.nimi)
-            
-            if self.pelaajaVuorossa not in self.jako.mukanaPotissa or self.pelaajaVuorossa.allin == True: #jos pelaaja on foldannut tai mennyt all-in
-                print(self.pelaajaVuorossa, "on foldannut tai allin -> ohitetaan")
-                if all(p.allin for p in self.jako.mukanaPotissa): #Jos kaikki pelaajat on all-in, panostuskierros päättyy
-                    break
-                vuoro += 1
-                continue
-            #Jos pelaajan edellisen vuoron jälkeen ei ole tullut korotuksia && kierros on mennyt vähintään kerran ympäri -> kierros päättyy
-            elif (self.pelaajaVuorossa.maksettuPanostukseen == self.suurinKorotus and vuoro > len(self.jako.pelaajat)): 
-                break
-
-            else:
-                print(self.pelaajaVuorossa, "siirtyy panosfunktioon tilassa", self.pelaajaVuorossa.valinta)
-                self.pelipoyta.paivitaNakymat()  #Vuoro on siirtynyt ja löytynyt aktiivinen pelaaja, joka tekee vaihdot
-                self.pyydaPanostus(self.pelaajaVuorossa)
-            
-            vuoro += 1
-
-        #Tarkistetaanko onko joku maksanut "liikaa" -> korotus johon kukaan ei ole vastannut palautetaan
-        SuurinPanosEnsin = sorted(self.jako.pelaajat, key=lambda p: p.maksettuPanostukseen, reverse=True)
-        print("Suurimmat panokset: ", SuurinPanosEnsin)
-        if len(SuurinPanosEnsin) >= 2:
-            maksettuLiikaa = SuurinPanosEnsin[0].maksettuPanostukseen - SuurinPanosEnsin[1].maksettuPanostukseen
-            if maksettuLiikaa != 0:
-                print("PALAUTETAAN LIIKAA MAKSETTU PELAAJALLE,", SuurinPanosEnsin[0].nimi, "yhteensä:", maksettuLiikaa)
-                self.jako.potti -= maksettuLiikaa  #Vähennetään potista ja pelaajan kontribuutio-tiedoista, lisätään chipit stackiin.
-                SuurinPanosEnsin[0].maksettuJakoon -= maksettuLiikaa
-                SuurinPanosEnsin[0].maksettuPanostukseen -= maksettuLiikaa
-                SuurinPanosEnsin[0].chips += maksettuLiikaa
-
-        print("PANOSTUSKIERROS OHI JA POTISSA ON", self.jako.potti)
-        for p in self.jako.pelaajat:
-            print("Pelaaja:", p.nimi, "maksanut pottiin:", p.maksettuPanostukseen, "ja maksanut jakoon:", p.maksettuJakoon)
-
-        self.pelipoyta.paivitaNakymat() #Päivitetään näkymä ennen kuin kierros loppuu, joku pikku sleep?
-        
-        for p in self.jako.pelaajat: #Nollataan panostuskierroksen tiedot
-            p.nollaaPanos()
-        self.suurinKorotus = 0
-
-        if len(self.jako.mukanaPotissa) == 1: 
-            return self.jako.mukanaPotissa[0]
-        else: 
-            return None
-    '''
 
     def kasittelePanostus(self, pelaaja: Pelaaja, valinta):
 
         maksettavaa = self.suurinKorotus - pelaaja.maksettuPanostukseen
 
         pelaaja.valinta = valinta
+        if valinta not in (1,2,3,4):
+            raise ValueError(f"Virheellinen panostusvalinta: {valinta}")
+
         ilmoitusteksti = None
         
         if valinta == 1:
@@ -207,7 +172,7 @@ class PanostusKierros:
             self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "pelaajailmoitus", "pelaaja": pelaaja.nimi, "ilmoitus": "ALL-IN!"})
 
 
-        print("\nTämä pelaaja on nyt maksanut panostukseen,", pelaaja.maksettuPanostukseen, "ja koko jakoon", pelaaja.maksettuJakoon, "\n")
+        #print("\nTämä pelaaja on nyt maksanut panostukseen,", pelaaja.maksettuPanostukseen, "ja koko jakoon", pelaaja.maksettuJakoon, "\n")
         return maara #Palauttaa pottiin maksettujen chippien määrän
 
 
@@ -225,7 +190,7 @@ class PanostusKierros:
             maksettuLiikaa = SuurinPanosEnsin[0].maksettuPanostukseen - SuurinPanosEnsin[1].maksettuPanostukseen
 
             if maksettuLiikaa != 0:
-                print("PALAUTETAAN LIIKAA MAKSETTU PELAAJALLE,", SuurinPanosEnsin[0].nimi, "yhteensä:", maksettuLiikaa)
+                #print("PALAUTETAAN LIIKAA MAKSETTU PELAAJALLE,", SuurinPanosEnsin[0].nimi, "yhteensä:", maksettuLiikaa)
                 self.jako.potti -= maksettuLiikaa  #Vähennetään potista ja pelaajan kontribuutio-tiedoista, lisätään chipit stackiin.
                 SuurinPanosEnsin[0].maksettuJakoon -= maksettuLiikaa
                 SuurinPanosEnsin[0].maksettuPanostukseen -= maksettuLiikaa
@@ -238,6 +203,7 @@ class PanostusKierros:
         if len(self.jako.mukanaPotissa) == 1: 
             self.voittaja = self.jako.mukanaPotissa[0]
             self.fold_voitto = True
+            self.jako.fold_voitto = True
             self.pelipoyta.loggaa(f"Muut foldasivat, {self.voittaja.nimi} voitti {self.jako.potti} merkkiä.")
             self.pelipoyta.paivitaNakymat()
             self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "fold_voitto", "showdownData": {"voittaja": self.voittaja.nimi, "potti": self.jako.potti}})
@@ -249,6 +215,72 @@ class PanostusKierros:
             self.voittaja = None
             self.valmis = True
             self.odottaaValintaa = False
+
+#Tätä käytetään koneoppivan AI:n koulutuksessa. Tätä olisi varmaan kannattanut miettiä niin, 
+#että kaikki tiedot olisivat joka tapauksessa pelaajanakyma -oliossa, eikä erillistä statea luotaisi.
+def muodostaGameStateAI(pelaaja, pelipoyta):  
+
+    assert pelaaja.ai is not None, "Funktio vain koneopetettavan AI:n käytössä"
+
+    kasi_luokka = pelaaja.ai.kasidata["voittoArvio"][0]
+
+    if pelipoyta.jako.panostuskierros.kierros == 1:
+        if pelaaja.ai.arvioituVoimakkuus < 20:
+            arvioitu_voimakkuus = 1
+        elif pelaaja.ai.arvioituVoimakkuus < 30:
+            arvioitu_voimakkuus = 2
+        elif pelaaja.ai.arvioituVoimakkuus < 40:
+            arvioitu_voimakkuus = 3
+        elif pelaaja.ai.arvioituVoimakkuus < 60:
+            arvioitu_voimakkuus = 4
+        else:
+            arvioitu_voimakkuus = 5
+    else:
+        arvioitu_voimakkuus = None
+
+    kierros = 1 if pelipoyta.pelivaihe == 1 else 2
+    pelaajia_alussa = len(pelipoyta.jako.pelaajat)
+    pelaajia_jaljella = len([p for p in pelipoyta.jako.mukanaPotissa if not p.folded])
+
+    pot_stack_suhde = pelipoyta.jako.potti / pelaaja.chips
+    if pot_stack_suhde < 0.2:
+        pot_stack_luokka = 1
+    elif pot_stack_suhde < 0.5:
+        pot_stack_luokka = 2
+    elif pot_stack_suhde < 1:
+        pot_stack_luokka = 3
+    elif pot_stack_suhde < 2:
+        pot_stack_luokka = 4
+    else:
+        pot_stack_luokka = 5
+    
+    stack_suhde = pelaaja.chips / 10000  
+    if stack_suhde < 0.3:
+        stack_luokka = 1
+    elif stack_suhde < 0.7:
+        stack_luokka = 2
+    elif stack_suhde < 1.25:
+        stack_luokka = 3
+    elif stack_suhde < 1.75:
+        stack_luokka = 4
+    else:
+        stack_luokka = 5
+
+    vastustaja_raise = any(p.valinta in (2, 3) for p in pelipoyta.jako.mukanaPotissa if p is not pelaaja)
+    oma_edellinen_valinta = pelaaja.valinta
+
+    return (
+        kasi_luokka,
+        arvioitu_voimakkuus,
+        kierros,
+        pelaajia_alussa,
+        pelaajia_jaljella,
+        pot_stack_luokka,
+        stack_luokka,
+        vastustaja_raise,
+        oma_edellinen_valinta
+    )
+
 
 
 

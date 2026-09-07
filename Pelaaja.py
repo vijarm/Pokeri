@@ -69,10 +69,21 @@ class Pelaaja:
         self.nimi = tiedot["nimi"]
         self.tyyppi = tiedot["tyyppi"]
         if tiedot["ai"] is not None:
-            ai_luokka = AI_TYYPIT[tiedot["ai"]]
-            asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": tiedot["ai"], "strategia": tiedot["ai_strategia"]}
-            self.ai = ai_luokka(self, asetukset)
+
+            #ai_luokka = AI_TYYPIT[tiedot["ai"]]
+            #asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": tiedot["ai"], "strategia": tiedot["ai_strategia"]}
+            
+            if tiedot["ai"] in ("Koneoppinut", "Koneoppinut 500k", "Koneoppinut 1M", "Koneoppinut 2M", "Koneoppinut 5M"): 
+                luokka = "Koneoppinut" # Nämä kuuluisi oikeasti yhdeksi pääluokaksi ja malli pitäisi olla oma erillinen valinta GUI:ssa...
+                malli = tiedot["ai"]
+            else:
+                luokka = tiedot["ai"]
+                malli = None
+
+            asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": luokka, "strategia": tiedot["ai_strategia"], "malli": malli}
+            self.ai = AI_TYYPIT[luokka](self, asetukset)
             self.ai_tyyppi = tiedot["ai"]
+
 
 
     
@@ -82,7 +93,7 @@ class Pelaaja:
 
         return self.ai.pyydaPanostus(kierros)
 
-    
+    '''
     def pyydaPanostusTeksti(self, kierros=2) -> int:
 
         if self.ai is not None: 
@@ -112,7 +123,8 @@ class Pelaaja:
                 valinta = 1
 
         return int(valinta) 
-        
+    '''
+      
 
 
 class PelaajaNakyma:

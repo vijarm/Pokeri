@@ -75,8 +75,8 @@ class GUI:
 
         paivitykset = self.transport.receive_for_gui()
 
-        for p in paivitykset:
-            print("TRANSPORTISTA TULI:", p.tyyppi, p.tiedot)
+        #for p in paivitykset:
+            #print("TRANSPORTISTA TULI:", p.tyyppi, p.tiedot)
 
         self.paivitysjono.extend(paivitykset)
 
@@ -98,7 +98,7 @@ class GUI:
 
         if self.paivitysjono and not self.GUI_pelipoyta.animaatiot:  #Jonossa tehtäviä ja animaatio ei käynnissä, otetaan uusi
             self.uusinPaivitys = self.paivitysjono.pop(0)
-            print("OTETTIIN KÄSITTELYYN:", self.uusinPaivitys.tyyppi)
+            #print("OTETTIIN KÄSITTELYYN:", self.uusinPaivitys.tyyppi)
 
             if self.uusinPaivitys.tyyppi == "aloita_peli":
 

@@ -2,26 +2,8 @@ from Pistelasku import laskeArvot
 from Pelaaja import Pelaaja
 from Pelipoyta import Pelipoyta
 from GUI.GUI import GUI
-from transport import Transport, LocalTransport, NetworkTransport
+from transport import Transport
 from viestit import Paivitys, Komento
-
-
-
-testilista = []
-asetukset = [{"aggressiivisuus": 1, "luokka": "Monte Carlo"}, {"aggressiivisuus": 2, "luokka": "Monte Carlo"}, {"aggressiivisuus": 3, "luokka": "Monte Carlo"}]
-ai_type = ["Monte Carlo", "Monte Carlo", "Monte Carlo"]
-testilista.append(Pelaaja("IHMINEN", "Ihminen"))
-for i in range(3):
-    nimi = f"Tietokone {i+1}"
-    tyyppi = "Tietsikka"
-    testilista.append(Pelaaja(nimi, tyyppi, AI_valinta=ai_type[i], AI_asetukset=asetukset[i]))
-
-ManualGame = Pelipoyta(testilista, LocalTransport())
-ManualGame.paivitaNakymat()
-
-
-#ManualGame.testiPeli()  #Täysi pelit chipit nolliin
-
 
 
 class Peli:
@@ -46,29 +28,30 @@ class Peli:
 
         if self.mode == "pelipoyta":
 
+            if self.pelipoyta is not None:
+
+                if self.pelipoyta.tila == "valmis":  #odotetaan GUI OK:ta normipelissä
+                    return
+
+                self.pelipoyta.paivitaTila()
+
+        elif self.mode == "simulointi":
+
             if self.simulointi is not None:
-                if self.simulointi.pelattu >= self.simulointi.peleja:
+
+                if self.simulointi.valmis == True:
+                    #self.simulointi.tulosta()
+                    self.paivitys_to_gui("simulointi_tulokset", {"tulokset": self.simulointi.get_tulokset()})
                     self.mode = "valikko"
                     return
 
                 self.simulointi.pelaa()
 
-            elif self.pelipoyta is not None:
-
-                #if self.pelipoyta.simulointi == False:
-
-                if self.pelipoyta.tila == "valmis":  #odotetaan GUI OK:ta normipelissä
-                        return
-
-                self.pelipoyta.paivitaTila()
-
-             
-
 
 
     def kasitteleKomento(self, komento, client):
 
-        print("Käsitellään komento", komento.tapahtuma, komento.tiedot)
+        #print("Käsitellään komento", komento.tapahtuma, komento.tiedot)
 
         if komento.tapahtuma == "poistu_pelipoydasta":
 
@@ -237,9 +220,22 @@ class Peli:
 
             elif komento.tapahtuma == "aloita_simulointi":
                 pelaajat = [p for p in komento.pelaaja if p is not None]
-                self.simulointi = Simulointi(pelaajat, 1000)
-                self.mode = "pelipoyta"
+                pelien_maara = komento.tiedot["pelien_maara"]
+                self.simulointi = Simulointi(pelaajat, pelien_maara, self.paivitys_to_gui)
+                self.mode = "simulointi"
                 return
+
+
+        if self.mode == "simulointi":
+
+            if komento.tapahtuma == "peru_simulointi":
+                assert self.simulointi is not None, "Simulointi ei voi alkaa ilman simulointi-oliota"
+                self.mode = "valikko"
+                self.simulointi.valmis = True
+                self.paivitys_to_gui("simulointi_tulokset", {"tulokset": self.simulointi.get_tulokset()})
+                self.simulointi.tulosta()                
+                return
+
 
 
         if self.mode == "pelipoyta":
@@ -247,22 +243,28 @@ class Peli:
             assert self.pelipoyta is not None
 
             if komento.tapahtuma == "vaihdot":
-                if komento.pelaaja != self.pelipoyta.jako.vaihtoPelaaja.nimi:
-                    print("Väärä pelaaja yritti vaihtaa kortteja")
-                    return
+                
+                if self.pelipoyta.jako is not None and self.pelipoyta.jako.vaihtoPelaaja is not None:
 
-                self.pelipoyta.jako.vaihtoindeksit = komento.tiedot["vaihtoindeksit"]
+                    if komento.pelaaja != self.pelipoyta.jako.vaihtoPelaaja.nimi:
+                        print("Väärä pelaaja yritti vaihtaa kortteja")
+                        return
+
+                    self.pelipoyta.jako.vaihtoindeksit = komento.tiedot["vaihtoindeksit"]
 
             elif komento.tapahtuma == "ok":
                 self.pelipoyta.ok = True
                 print(f"Pelaaja {komento.pelaaja} painoi OK.")
 
             elif komento.tapahtuma == "panostusvalinta":
-                if komento.pelaaja != self.pelipoyta.jako.panostuskierros.pelaajaVuorossa.nimi:
-                    print("Väärä pelaaja yritti antaa panostusvalintaa")
-                    return
+
+                if self.pelipoyta.jako is not None and self.pelipoyta.jako.panostuskierros is not None and self.pelipoyta.jako.panostuskierros.pelaajaVuorossa is not None:
                 
-                self.pelipoyta.jako.panostuskierros.panostusValinta = komento.tiedot["panostusvalinta"]
+                    if komento.pelaaja != self.pelipoyta.jako.panostuskierros.pelaajaVuorossa.nimi:
+                        print("Väärä pelaaja yritti antaa panostusvalintaa")
+                        return
+                    
+                    self.pelipoyta.jako.panostuskierros.panostusValinta = komento.tiedot["panostusvalinta"]
 
             elif komento.tapahtuma == "peli_ohi":
                 self.mode = "valikko"
@@ -283,14 +285,16 @@ class Peli:
                 pelaaja.folded = True
                 pelaaja.aktiivinen = False
                 pelaaja.tyyppi = "Tietsikka"
-                if pelaaja in self.pelipoyta.jako.mukanaPotissa:
-                    self.pelipoyta.jako.mukanaPotissa.remove(pelaaja)
+
+                if self.pelipoyta.jako is not None:
+                    if pelaaja in self.pelipoyta.jako.mukanaPotissa:
+                        self.pelipoyta.jako.mukanaPotissa.remove(pelaaja)
 
                 #jos juuri kyseiseltä pelaajalta odotetaan vaihtoja tai panostusta
-                if self.pelipoyta.jako and self.pelipoyta.jako.vaihtoPelaaja == pelaaja:
+                if self.pelipoyta.jako is not None and self.pelipoyta.jako.vaihtoPelaaja == pelaaja:
                     self.pelipoyta.jako.vaihtoindeksit = []
 
-                if self.pelipoyta.jako and self.pelipoyta.jako.panostuskierros and self.pelipoyta.jako.panostuskierros.pelaajaVuorossa == pelaaja:
+                if self.pelipoyta.jako is not None and self.pelipoyta.jako.panostuskierros and self.pelipoyta.jako.panostuskierros.pelaajaVuorossa == pelaaja:
                     self.pelipoyta.jako.panostuskierros.panostusValinta = "luovuta"
 
                 for i, p in enumerate(self.pelaajat):
@@ -301,8 +305,14 @@ class Peli:
 
     def luoPelaaja(self, tiedot):
         if tiedot["ai"] is not None:
-            asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": tiedot["ai"], "strategia": tiedot["ai_strategia"]}
-            return Pelaaja(tiedot["nimi"], tiedot["tyyppi"], tiedot["ai"], asetukset)
+            if tiedot["ai"] in ("Koneoppinut", "Koneoppinut 500k", "Koneoppinut 1M", "Koneoppinut 2M", "Koneoppinut 5M"): 
+                luokka = "Koneoppinut" # Nämä kuuluisi oikeasti yhdeksi pääluokaksi ja malli pitäisi olla oma erillinen valinta GUI:ssa...
+                malli = tiedot["ai"]
+            else:
+                luokka = tiedot["ai"]
+                malli = None
+            asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": luokka, "strategia": tiedot["ai_strategia"], "malli": malli}
+            return Pelaaja(tiedot["nimi"], tiedot["tyyppi"], luokka, asetukset)
 
         else:
             return Pelaaja(tiedot["nimi"], tiedot["tyyppi"])
@@ -359,30 +369,34 @@ class Peli:
 
 class Simulointi:
 
-    def __init__(self, pelaajat, peleja):
+    def __init__(self, pelaajat, peleja, paivitys_to_gui):
         self.pelaajat = pelaajat
         self.peleja = peleja
+        self.paivitys_to_gui = paivitys_to_gui
         self.pelattu = 0
-        self.kasia = 0
+        self.valmis = False
 
-        self.voitot = {}
-        self.fold_voitot = {}
-        self.voittokadet = {}
-        self.parasHaviaja = {}
+        self.pelatutKadet = 0
+        self.tasapelit = 0
+        self.voitot = {}  #Koko pelit
+
+        self.kasivoitot = {}  #Yksittäiset kädet
+        self.fold_voitot = {}  #Fold-voitot
+        self.voittokadet = {}  #Käsi jolla voitettiin
+        self.parasHaviaja = {}  #Paras käsi joka hävisi
 
         for pelaaja in self.pelaajat:
             self.voitot[pelaaja] = 0
+            self.kasivoitot[pelaaja] = 0
             self.fold_voitot[pelaaja] = 0
 
         for i in range(18):
             self.voittokadet[i] = 0
             self.parasHaviaja[i] = 0
 
-
-
     def pelaa(self):
-        for _ in range(100):  #Pelataan 100 ennen kuin antaa tickata GUI
-            simulointi_peli = Pelipoyta(self.pelaajat, simulointi = True)
+        for _ in range(10):  #Pelataan 10 ennen kuin antaa tickata GUI
+            simulointi_peli = Pelipoyta(self.pelaajat, simulointi = self)
             while True:
                 simulointi_peli.paivitaTila()
                 if simulointi_peli.tila == "valmis":
@@ -395,28 +409,58 @@ class Simulointi:
 
             self.pelattu += 1
             if self.pelattu >= self.peleja:
+                self.valmis = True
                 break
-    
-        for pelaaja, voitot in self.voitot.items():
-            print("PELAAJA:", pelaaja.nimi, "|| VOITOT:", voitot, "|| LISÄTIEDOT:", pelaaja.ai_tyyppi, pelaaja.ai.asetukset)
+
+        self.paivitys_to_gui("simulointi_paivitys", {"pelattu": int((self.pelattu / self.peleja) * 100)})
                         
+    def tulosta(self):
+        print("SIMULOINTI VALMIS, KÄSIÄ PELATTIIN YHTEENSÄ", self.pelatutKadet, "KPL", self.pelattu, "PELISSÄ")
+        for pelaaja, voitot in self.voitot.items():
+            print("PELAAJA:", pelaaja.nimi, "|| VOITOT:", voitot, "|| FOLD-VOITOT:", self.fold_voitot[pelaaja], "|| KÄSIVOITOT:", self.kasivoitot[pelaaja], "|| LISÄTIEDOT:", pelaaja.ai_tyyppi, pelaaja.ai.asetukset)
+        print("============================  VOITTOKÄDET  =========================")
+        for kasi, arvo in self.voittokadet.items():
+            print("KÄSI:", kasi, "|| VOITTOJA:", arvo)
+        print("==========================  PARHAAT HÄVIÄJÄT  =========================")
+        for kasi, arvo in self.parasHaviaja.items():
+            print("KÄSI:", kasi, "|| VOITTOJA:", arvo)
+
+    def get_tulokset(self):
+        tulokset = {
+            "pelit": self.pelattu,
+            "pelatut_kadet": self.pelatutKadet,
+            "voitot": self.voitot,
+            "tasapelit": self.tasapelit,
+            "kasivoitot": self.kasivoitot,
+            "fold_voitot": self.fold_voitot,
+            "voittokadet": self.voittokadet,
+            "parasHaviaja": self.parasHaviaja
+        }
+
+        return tulokset
 
 
-peli = Peli()
-peli.gui = GUI(peli.oma_pelaaja, peli.transport)
-peli.oma_pelaaja.gui = peli.gui
-dt = 0
+def main():
 
-while peli.running:
+    peli = Peli()
+    gui = GUI(peli.oma_pelaaja, peli.transport)
+    peli.gui = gui
+    peli.oma_pelaaja.gui = gui
+    dt = 0
 
-    peli.gui.process_events()
+    while peli.running:
 
-    for client, komento in peli.transport.receive_for_engine():
-        peli.kasitteleKomento(komento, client)
+        peli.gui.process_events()
 
-    peli.paivitaTila()
-    peli.gui.paivita(dt)  #fps
-    peli.gui.draw()
+        for client, komento in peli.transport.receive_for_engine():
+            peli.kasitteleKomento(komento, client)
 
-    dt = peli.gui.clock.tick(60) / 1000
+        peli.paivitaTila()
+        peli.gui.paivita(dt)  #fps
+        peli.gui.draw()
 
+        dt = peli.gui.clock.tick(60) / 1000
+
+
+if __name__ == "__main__":
+    main()

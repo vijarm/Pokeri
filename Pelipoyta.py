@@ -1,7 +1,7 @@
 from Pakka import Pakka
 from Pelaaja import Pelaaja, PelaajaNakyma
 from Jako import Jako
-from Pakka import Kortti
+from Pistelasku import haeVoittaja
 from random import randint
 
 class Pelipoyta:
@@ -49,7 +49,7 @@ class Pelipoyta:
 
         self.kasitteleJakoTulos()
 
-        
+    '''
     def autoPeli(self) -> Pelaaja:
         self.kierros = 0
         while True:
@@ -63,7 +63,7 @@ class Pelipoyta:
         print("Peli päättyi, jakoja voittajan löytämiseen tarvittiin", self.kierros)
         return next(p for p in self.pelaajat if p.aktiivinen)
 
-    '''
+        
     def testiPeli(self):
         self.paivitaNakymat()
         self.kierros = 0
@@ -95,19 +95,60 @@ class Pelipoyta:
         assert self.jako is not None
         tulos = self.jako.tulos
         assert isinstance(tulos, list)
-        #tulos[x] = tuplen indeksi, jos potteja on useita niin x > 1
+        #tulos[x] = voittotuplen indeksi, jos potteja on useita niin x > 1
         #tulos[x][0] = x:n voittopotin voittajapelaajat LISTA, tulos[x][1] = x:n voittopotin summa (int)
         #tulos[x][0][y] = x:n voittopotin voittajapelaajien y:s voittajapelaaja
         for x in range(len(tulos)):
             for y in range(len(tulos[x][0])):
                 tulos[x][0][y]["pelaaja"].chips += (tulos[x][1] // len(tulos[x][0]))
-                
+
+        if self.simulointi is not None:
+            voittaja = tulos[0][0][0]["pelaaja"]  #suurimman potin ensimmäinen voittaja
+            self.simulointi.pelatutKadet += 1
+            if self.jako.fold_voitto == True:
+                self.simulointi.fold_voitot[voittaja] += 1
+            else:
+                if len(tulos[0][0]) > 1:  #Suurin potti tasapeli
+                    self.simulointi.tasapelit += 1
+
+                self.simulointi.kasivoitot[voittaja] += 1
+                self.simulointi.voittokadet[tulos[0][0][0]["voittoArvio"][0]] += 1  #Voittajan käsi 0-17
+
+                #Parhaan häviävän käden hakeminen
+                ilmanvoittajaa = [p for p in self.jako.pelaajat if p != tulos[0][0][0]["pelaaja"] and not p.folded]
+                parashaviaja = self.jako.vertaaKadet(ilmanvoittajaa)
+                luokka = parashaviaja[0]["voittoArvio"][0]
+                self.simulointi.parasHaviaja[luokka] += 1
+
+        #Tarvitaan vain Koneoppinut -ai:n koulutuksessa
+        for pelaaja in self.jako.pelaajat:  
+            if pelaaja.ai is not None and pelaaja.ai.luokka == "Koneoppinut":
+                ai = pelaaja.ai
+                reward = (pelaaja.chips - ai.chips_jaon_alussa) / 100
+
+                for i, (state, valinta) in enumerate(reversed(ai.paatokset)):
+                    paino = ai.lambda_kerroin ** i
+                    ai.update(state, valinta, reward * paino)
+
+                ai.paatokset = []
+                ai.chips_jaon_alussa = None
+                ai.koulutetut_jaot += 1
+
+                #if ai.koulutetut_jaot == 10000000:  #Seuraava pysyvä malli 10M kättä
+                #    ai.tallenna("models/ai_10m.pkl")
+
+                #if ai.koulutetut_jaot % 100000 == 0: #Jatkuva tallennus 100k käden jälkeen
+                #    ai.tallenna("models/ai_jatkuva.pkl")
+                #    print("TALLENNETTU Q-TABLE TIEDOSTOON, jakoja koulutettu", ai.koulutetut_jaot)
+
+
+
         self.lopetaKierros()
         self.paivitaNakymat()
         self.paivitaGUI("pelipoyta", {"tapahtuma": "pottiJaettu"})  #Tällä ei ole mitään vastatapahtumaa, halutaanko joku yhteisveto tilanteesta?
         self.jako = None
 
-
+    '''
     def uusiAutoKierros(self): #Tätä muokataan yo. mukana TAI laitetaan muuttuja auto = 1, jonka perusteella pari asiaa muuttuu
         aktiiviset = [p for p in self.pelaajat if p.aktiivinen and p.chips > 0]  #Vain aktiiviset pelaa, lisävarmistus chips > 0
         if len(aktiiviset) < 2: return
@@ -127,6 +168,7 @@ class Pelipoyta:
         
         for i in self.pelaajat:
             print(i.nimi, i.chips)
+    '''
 
     def lopetaKierros(self): 
         for pelaaja in self.pelaajat:
@@ -145,10 +187,7 @@ class Pelipoyta:
         self.paivitaNakymat()
         self.loggaa(f"{voittaja.nimi} voitti koko pelin!")
         self.paivitaGUI("pelipoyta", {"tapahtuma": "voittajaLoytyi", "pelaaja": voittaja.nimi, "ilmoitus": ["Peli on päättynyt!", f"Pelin on voittanut {voittaja.nimi}!"]})
-        print("TÖTTÖTTÖRÖÖÖÖ RÖ TÖÖÖ!!!")
-        print("MEILLÄ ON UUSI MESTARI!")
-        print("HÄN KULKEE NIMELLÄ", voittaja.nimi, "JA PEITTOSI MUUT KERÄÄMÄLLÄ", voittaja.chips, "CHIPPIÄ!")
-        print("ONNEA PONNEA!")
+        #print("TÖTTÖRÖÖ, VOITTAJA ON ", voittaja.nimi, "JA PEITTOSI MUUT KERÄÄMÄLLÄ", voittaja.chips, "CHIPPIÄ!")
 
     def paivitaJakaja(self): 
         while True:

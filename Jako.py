@@ -16,8 +16,9 @@ class Jako:
         self.vaihtoVuoro = 1
         self.vaihtoOdottaa = False
         self.vaihtoPelaaja = None
-        self.vaihtoindeksit = None
+        self.vaihtoindeksit: list | None = None
 
+        self.fold_voitto = False
         self.pottiaJaljella = 0
         self.showdownOdottaa = True if self.pelipoyta.simulointi is None else False
         self.showdownValmis = False
@@ -77,58 +78,16 @@ class Jako:
 
 
 
-    '''
-    def pelaaKierros(self) -> list:
-        assert len(self.pelaajat) >= 2, "Pelin ei kuulu siirtyä jakoon jos aktiivisia pelaajia on vähemmän kuin 2"
-        self.keraaAlkupanokset()       
-        self.pelipoyta.paivitaNakymat()  #Myös tässä välissä jos tulee joku all-in trigger tms?     
-        self.jaaKortit()
-        self.pelipoyta.paivitaNakymat()
-
-        #panostuskierros ennen vaihtoja
-        self.pelipoyta.pelivaihe = 1
-        self.panostuskierros = PanostusKierros(self, self.pelipoyta, kierros=1)
-        self.pelipoyta.paivitaNakymat()
-        voittaja = self.panostuskierros.suoritaKierros()
-        self.pelipoyta.paivitaNakymat()
-        if voittaja:
-            print("KAIKKI MUUT FOLDASI JA", voittaja.nimi, "voitti!")
-            return [(haeVoittaja([voittaja]), self.potti)]  #Kierrätetään haeVoittaja -kautta, eli käsi evaluoidaan ja näytetään aina? Pitää palauttaa listana!
-
-        #vaihdot, alkaa jakajasta seuraavasta:
-        self.pelipoyta.pelivaihe = 2
-        for i in range(1, len(self.pelaajat) + 1):
-            vuorossa = self.pelaajat[(i + self.jakaja) % len(self.pelaajat)]  #Tää ei päivity näkymään nyt
-            if vuorossa in self.mukanaPotissa:
-                self.pelipoyta.paivitaNakymat()
-                vuorossa.vaihtoja = self.pyydaVaihto(vuorossa)
-
-        #panostuskierros vaihtojen jälkeen
-        self.pelipoyta.pelivaihe = 3
-        self.pelipoyta.paivitaNakymat()
-        self.panostuskierros = PanostusKierros(self, self.pelipoyta)
-        self.pelipoyta.paivitaNakymat()
-        voittaja = self.panostuskierros.suoritaKierros()
-        self.pelipoyta.paivitaNakymat()
-        if voittaja:
-            print("KAIKKI MUUT FOLDASI JA", voittaja.nimi, "voitti!")
-            return [(haeVoittaja([voittaja]), self.potti)]
-
-        self.pelipoyta.pelivaihe = 4
-        self.pelipoyta.paivitaNakymat()
-        self.kerroKortit() #Tää on vaan tulostus
-        voittaja = self.vertaaKadet(self.mukanaPotissa) #Tää taitaa nyt olla vanha, alla tekee sen oikein
-        voittajalista = self.jaaPotti()
-        self.pelipoyta.paivitaNakymat()
-        print("\nNO NYT on testattu voittajalistaa ja siihen tuli tämmöstä:", voittajalista)
-        return (voittajalista)
-    '''
-
     def aloitaJako(self):
         assert len(self.pelaajat) >= 2, "Pelin ei kuulu siirtyä jakoon jos aktiivisia pelaajia on vähemmän kuin 2"
         self.pelipoyta.pelivaihe = 0
         self.pelipoyta.paivitaNakymat()
         self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "yleisilmoitus", "ilmoitus": ["Uusi kierros alkaa!", f"Alkupanos {self.panos} merkkiä.", "Kerätään panokset ja jaetaan kortit!"]})
+
+        for p in self.pelaajat: #Tämä tarvitaan Q-learning aikana, muuten voi ottaa pois
+            if p.ai is not None and p.ai.luokka == "Koneoppinut":
+                p.ai.chips_jaon_alussa = p.chips
+
         self.keraaAlkupanokset()
 
         self.jaaKortit()
@@ -139,6 +98,7 @@ class Jako:
         self.panostuskierros = PanostusKierros(self, self.pelipoyta, kierros=1)
         self.tila = "panostus1"
 
+    '''
     def autoKierros(self) -> list:
         self.pelipoyta.paivitaNakymat()
         self.keraaAlkupanokset()            
@@ -163,6 +123,7 @@ class Jako:
         print("")
         print("Voittaja:", voittaja)
         return (voittajalista)
+    '''
 
     def keraaAlkupanokset(self): 
         for pelaaja in self.pelaajat:
@@ -182,7 +143,7 @@ class Jako:
         SuurinPanosEnsin = sorted(self.pelaajat, key=lambda p: p.maksettuJakoon, reverse=True)
         maksettuLiikaa = SuurinPanosEnsin[0].maksettuJakoon - SuurinPanosEnsin[1].maksettuJakoon
         if maksettuLiikaa != 0:
-            print("PALAUTETAAN LIIKAA MAKSETTU PELAAJALLE,", SuurinPanosEnsin[0].nimi, "yhteensä:", maksettuLiikaa)
+            #print("PALAUTETAAN LIIKAA MAKSETTU PELAAJALLE,", SuurinPanosEnsin[0].nimi, "yhteensä:", maksettuLiikaa)
             self.potti -= maksettuLiikaa  #Vähennetään potista ja pelaajan kontribuutio-tiedoista, lisätään chipit stackiin.
             SuurinPanosEnsin[0].maksettuJakoon -= maksettuLiikaa
             SuurinPanosEnsin[0].chips += maksettuLiikaa
@@ -208,52 +169,13 @@ class Jako:
                 aktiiviset.append(pelaaja)
         return haeVoittaja(aktiiviset)
 
-    '''def jaaPotti(self) -> list:
-        pottiaJaljella = self.potti
-        voittajat = []  #Tallennetaan tupleen ([lista voittajista], näiden voittajien voittama potti)
-        i = 0  #tuplen indeksi
-
-        while pottiaJaljella > 0:  #Kun potti on jaettu kokonaan niin potin jakaminen pysähtyy
-            assert len(self.mukanaPotissa) > 0, "Viimeistä pottia jakamassa täytyy olla jokin pelaaja"
-            voittaja = haeVoittaja(self.mukanaPotissa)  #voittaja on aina lista, vaikka voittajia olisi vain yksi. Hakee mukanaPotissa parhaa(n/t) kädet
-            print("MILTÄ NÄYTTÄÄ NYT VOITTAJALISTA:", voittaja)
-#            for x in range(len(voittaja)):  #i:des voittajatuple, [0] on i:dennen tuplen voittajalista
-#                self.mukanaPotissa.remove(voittaja[x]["pelaaja"]) #x:s voittajatuple, [0] on x:nnen tuplen voittajalista, sen x:s voittaja
-            voittajanPanostus = voittaja[0]["pelaaja"].maksettuJakoon
-
-            for p in self.mukanaPotissa:
-                print("PELAAJA", p.nimi, "maksanut", p.maksettuJakoon)
-            self.mukanaPotissa = [p for p in self.mukanaPotissa if p.maksettuJakoon > voittajanPanostus]  #Voitonjaossa jatkavat vain ne pelaajat, jotka ovat maksaneet pottiin enemmän kuin viimeisen potin voittanut
-
-            for p in self.mukanaPotissa:
-                print("PELAAJA", p.nimi, "maksanut", p.maksettuJakoon)
-            tamaPotti = 0
-            for y in range(len(self.pelaajat)):
-                tamaPotti += min(voittajanPanostus, self.pelaajat[y].maksettuJakoon)  #Lisätään pottiin pelaajan y osuus
-                self.pelaajat[y].maksettuJakoon -= min(voittajanPanostus, self.pelaajat[y].maksettuJakoon)  #Vähennetään voittoihin maksettu osuus pelaajan jäljellä olevista kontribuutioista loppupottiin
-            pottiaJaljella -= tamaPotti  #Vähennetään osuus jäljellä olevasta potista
-            voittajat.append((voittaja, tamaPotti))  #Lisätään voittajalistaan tuple: (voittaja(t), heidän kesken jaettava potti)
-            print("Tästä voittokierroksesta maksettiin sivupottia", tamaPotti, "ja jäljelle jäi pottiin", pottiaJaljella, "mukana vielä", self.mukanaPotissa)
-            i+=1     
-
-            for p in self.pelaajat:  # ei tietenkään lopullisesti näin koska tämä käy pelaajat yksitellen?
-                if p.ai is None:
-                    p.gui.GUI_pelipoyta.valintapaneeli.mode = "showdown"
-                    
-                    while p.gui.GUI_pelipoyta.valintapaneeli.jatketaan is None:
-                        p.gui.process_events()
-                        p.gui.draw()
-                        p.gui.clock.tick(60)  #FPS
-
-                    p.gui.GUI_pelipoyta.valintapaneeli.get_valinta()
-
-        return voittajat'''
 
     def pyydaVaihtoAI(self, pelaaja: Pelaaja): 
 
-        print("Vuorossa", pelaaja.nimi, "|| käsikortit: ", pelaaja.kasikortit)
-        analysoitu = laskeArvot(pelaaja.kasikortit, vaihtoja=True)
-        print("Kädessä on:", analysoitu["kasinimi"], "|| Vaihtosuosituksia:", analysoitu["vaihtosuositus"])
+        #print("Vuorossa", pelaaja.nimi, "|| käsikortit: ", pelaaja.kasikortit)
+        assert pelaaja.ai is not None, "AI:n vaihtofunktioon ohjataan vain AI pelaajat"
+        analysoitu = pelaaja.ai.kasidata
+        #print("Kädessä on:", analysoitu["kasinimi"], "|| Vaihtosuosituksia:", analysoitu["vaihtosuositus"])
         vaihdettu = 0
 
         assert pelaaja.ai is not None, "ihmispelaaja ohjattiin AI-pelaajan vaihtofunktioon"
@@ -346,8 +268,8 @@ class Jako:
         if self.pelipoyta.simulointi is None:
             self.showdownOdottaa = True  
 
+
     def paivitaShowdown(self):
-        #ihmispelaaja = next(p for p in self.pelipoyta.pelaajat if p.ai is None)  #Tää on jo poistettu?
 
         if self.showdownOdottaa:
 

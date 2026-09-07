@@ -28,6 +28,7 @@ TURKOOSI = settings.TURKOOSI
 ORANSSI = settings.ORANSSI
 
 font = settings.font
+small_font = settings.small_font
 medium_font = settings.medium_font
 large_font = settings.large_font
 title_font = settings.title_font
@@ -46,7 +47,9 @@ class GUI_valikko:
         self.simulointiPelaajat = [None, None, None, None]
         self.pelipoyta = None
         self.muokkaus_popup = None
-        self.simulointiTulos = None
+
+        self.simulointi = Simulointi(self)
+        self.simulointi_pelit = RullaavaValinta([100, 1000, 10000], (WIDTH//2 - 400, HEIGHT - 120, 200, 60))
 
         self.liityOnline = LiityOnline(self)
         self.salliLiittyminen = False
@@ -84,32 +87,20 @@ class GUI_valikko:
         elif paivitys.tyyppi == "uusi_simulointi_pelaaja":
             self.simulointiPelaajat[paivitys.tiedot["indeksi"]] = paivitys.tiedot["pelaaja"]
 
+        elif paivitys.tyyppi == "simulointi_paivitys":
+            self.simulointi.peleja_simuloitu = paivitys.tiedot["pelattu"]
+
+        elif paivitys.tyyppi == "simulointi_tulokset":
+            self.simulointi.tulokset = paivitys.tiedot["tulokset"]
+
+        #client päivityksiä
         elif paivitys.tyyppi == "uusi_client":
             self.pelaajat = paivitys.tiedot["pelaajat"]
             self.muokkaus_popup = IlmoitusPopup(self.screen, f"Uusi pelaaja {paivitys.tiedot["nimi"]} liittyi!", GRAY)   
 
-
-        elif paivitys.tyyppi == "client_poistui":
-            self.pelaajat = paivitys.tiedot["pelaajalista"]
-            self.muokkaus_popup = IlmoitusPopup(self.screen, f"Pelaaja {paivitys.tiedot['pelaaja']} poistui!", GRAY)
-
         elif paivitys.tyyppi == "liittyminen_ok":
             self.liityOnline.connected = True
             self.liityOnline.mukanaNimella = paivitys.tiedot["nimi"]
-
-
-        elif paivitys.tyyppi == "liittyminen_sallittu":
-            self.salliLiittyminen = True
-            self.muokkaus_popup = IlmoitusPopup(self.screen, "Pelaajat voivat nyt liittyä!", LIGHT_GRAY)
-            pass
-
-        elif paivitys.tyyppi == "host_epaonnistui":
-            self.salliLiittyminen = False
-            self.muokkaus_popup = IlmoitusPopup(self.screen, "Hostauksen aloittaminen epäonnistui!", LIGHT_RED)
-
-        elif paivitys.tyyppi == "liittyminen_estetty":
-            self.salliLiittyminen = False
-            self.muokkaus_popup = IlmoitusPopup(self.screen, "Uusien pelaajien liittyminen estetty!", LIGHT_GRAY)
 
         elif paivitys.tyyppi == "client_epaonnistui":
             self.liityOnline.connected = False
@@ -120,6 +111,23 @@ class GUI_valikko:
             self.liityOnline.resetoi()            
             self.mode = "liity"
             self.liityOnline.popup = IlmoitusPopup(self.screen, "Yhteys pelin hostiin katkesi!")
+
+        #host päivityksiä
+        elif paivitys.tyyppi == "liittyminen_sallittu":
+            self.salliLiittyminen = True
+            self.muokkaus_popup = IlmoitusPopup(self.screen, "Pelaajat voivat nyt liittyä!", LIGHT_GRAY)
+
+        elif paivitys.tyyppi == "liittyminen_estetty":
+            self.salliLiittyminen = False
+            self.muokkaus_popup = IlmoitusPopup(self.screen, "Uusien pelaajien liittyminen estetty!", LIGHT_GRAY)
+
+        elif paivitys.tyyppi == "host_epaonnistui":
+            self.salliLiittyminen = False
+            self.muokkaus_popup = IlmoitusPopup(self.screen, "Hostauksen aloittaminen epäonnistui!", LIGHT_RED)
+
+        elif paivitys.tyyppi == "client_poistui":
+            self.pelaajat = paivitys.tiedot["pelaajalista"]
+            self.muokkaus_popup = IlmoitusPopup(self.screen, f"Pelaaja {paivitys.tiedot['pelaaja']} poistui!", GRAY)
 
 
 
@@ -178,6 +186,14 @@ class GUI_valikko:
                         if nappi.clicked(event.pos):
                             print("CLICKATTU", nappi.nimi)
                             self.handle_nappi(nappi.nimi, pelaajaindeksi)
+
+                self.simulointi_pelit.handle_event(event)
+
+
+        elif self.mode == "simulointi_kaynnissa":
+
+            self.simulointi.handle_event(event)
+
 
 
     def handle_nappi(self, valinta, pelaajaindeksi=None):
@@ -239,8 +255,8 @@ class GUI_valikko:
                     self.muokkaus_popup = IlmoitusPopup(self.screen, "Tarvitaan vähintään 2 pelaajaa!")
                     return
 
-                self.lisaaKomento("aloita_simulointi", self.simulointiPelaajat)  #Tietoihin asetukset !
-                #self.mode = "simulointiTulos"
+                self.lisaaKomento("aloita_simulointi", self.simulointiPelaajat, {"pelien_maara": self.simulointi_pelit.get()})  #Tietoihin asetukset !
+                self.mode = "simulointi_kaynnissa"
 
             elif valinta == "palaa_menuun":
                 self.mode = "main"
@@ -287,6 +303,9 @@ class GUI_valikko:
 
         elif self.mode == "simuloi":
             draw_pelaajavalinta(self, simulointi=True)
+
+        elif self.mode == "simulointi_kaynnissa":
+            self.simulointi.draw()
 
 
     def paivitaValintaNapit(self):
@@ -357,7 +376,7 @@ def draw_pelaajavalinta(gui_valikko, simulointi=False):
             elif pelaaja.ai is None:
                 tyyppiteksti = pelaaja.tyyppi
             else:
-                tyyppiteksti = f"AI, {pelaaja.ai.luokka}, {next(key for key, val in AGGR_VAIHTOEHDOT.items() if val == pelaaja.ai.aggressiivisuus)}"
+                tyyppiteksti = f"AI, {pelaaja.ai.luokka if pelaaja.ai.luokka != "Koneoppinut" else pelaaja.ai.malli}, {next(key for key, val in AGGR_VAIHTOEHDOT.items() if val == pelaaja.ai.aggressiivisuus)}"
             
             draw_text(screen, f"{pelaaja.nimi}", (220, 160 + i*115), large_font, GOLD)
             draw_text(screen, tyyppiteksti, (450, 160 + i*115), large_font, GOLD)
@@ -372,11 +391,15 @@ def draw_pelaajavalinta(gui_valikko, simulointi=False):
             if simulointi == True:
                 continue
             else:
-                if gui_valikko.salliLiittyminen == True:
-                    continue
+                #if gui_valikko.salliLiittyminen == True:  Nää tarkastetaan jo muualla? 
+                #    continue
                 nappi.draw(screen)
 
         nappi.draw(screen)
+
+    if simulointi == True:
+        draw_centered_text(screen, "PELIEN MÄÄRÄ:", (WIDTH//2 - 300, HEIGHT - 140), large_font, WHITE)
+        gui_valikko.simulointi_pelit.draw(screen)
 
 
     if gui_valikko.muokkaus_popup:
@@ -533,6 +556,301 @@ class LiityOnline:
 
 
 
+class Muokkaus_popup:
+    def __init__(self, gui_valikko, pelaaja, indeksi, simulointi = False):
+        self.screen = gui_valikko.screen
+        self.pelaajat = gui_valikko.pelaajat if simulointi == False else gui_valikko.simulointiPelaajat
+        self.muokattava = pelaaja
+        self.indeksi = indeksi
+        self.lisaaKomento = gui_valikko.lisaaKomento
+        self.suljetaan = False
+        self.simulointi = simulointi
+
+        #Muokattavat arvot
+        self.nimi = ""
+        self.tyyppi = ""
+        self.oma_pelaaja = False
+        self.ai = None
+        self.ai_aggressiivisuus = None
+        self.ai_strategia = None
+
+        self.popup = None
+
+        if pelaaja == gui_valikko.oma_pelaaja:
+            self.oma_pelaaja = True
+            self.nimi = pelaaja.nimi
+            self.tyyppi = pelaaja.tyyppi
+
+
+        elif pelaaja is not None:
+            self.nimi = pelaaja.nimi
+            self.tyyppi = pelaaja.tyyppi
+            if pelaaja.ai is not None:
+                self.ai = pelaaja.ai.luokka
+                self.ai_aggressiivisuus = pelaaja.ai.aggressiivisuus
+                self.ai_strategia = pelaaja.ai.strategia
+
+        else:
+            self.nimi = arvoNimi()
+            self.tyyppi = "Tietsikka"
+            self.ai = "Monte Carlo"
+            self.ai_aggressiivisuus = 2
+            self.ai_strategia = "Normaali"
+
+
+        #Boksit, napit ym piirtotietoja
+        self.rect = pygame.Rect(400, 100, WIDTH-800, HEIGHT-200)  #tausta
+        self.napit = []
+        self.napit.append(Nappi(self.rect.centerx - 120, HEIGHT - 170, 100, 50, "tallenna", "TALLENNA", LIGHT_BLUE, BLACK, BLACK, medium_font))
+        self.napit.append(Nappi(self.rect.centerx + 20, HEIGHT - 170, 100, 50, "sulje_popup", "PERUUTA", RED, BLACK, BLACK, medium_font))
+        self.nimiboksi = Tekstiboksi( (self.rect.centerx-120, 170, 240, 40), self.nimi)
+        self.ai_valinta = RullaavaValinta(AI_VAIHTOEHDOT, (self.rect.centerx - 180, 275, 360, 50))
+        self.strategia_valinta = RullaavaValinta(STRATEGIA_VAIHTOEHDOT, (self.rect.centerx - 180, 385, 360, 50))
+        self.aggr_valinta = RullaavaValinta(list(AGGR_VAIHTOEHDOT.keys()), (self.rect.centerx - 180, 495, 360, 50))
+
+    def draw(self):
+
+        #pop-up tausta
+        pygame.draw.rect(self.screen, LIGHT_GRAY, self.rect, border_radius=8)
+        pygame.draw.rect(self.screen, BLACK, self.rect, width=3, border_radius=8)
+
+        draw_centered_text(self.screen, "NIMI:", (self.rect.centerx, 150), large_font, BLACK)
+        self.nimiboksi.draw(self.screen)
+
+        if self.ai is None:
+            draw_centered_text(self.screen, "TYYPPI:", (self.rect.centerx, 260), large_font, BLACK)
+            draw_centered_text(self.screen, "Oma pelaajasi" if self.oma_pelaaja else f"{self.tyyppi}", (self.rect.centerx, 300), large_font, BLACK)
+       
+        else:
+            draw_centered_text(self.screen, "AI-LUOKKA:", (self.rect.centerx, 260), large_font, BLACK)
+            self.ai_valinta.draw(self.screen)
+
+            draw_centered_text(self.screen, "STRATEGIA:", (self.rect.centerx, 370), large_font, BLACK)
+            self.strategia_valinta.draw(self.screen)
+
+            draw_centered_text(self.screen, "AGGRESSIIVISUUS:", (self.rect.centerx, 480), large_font, BLACK)
+            self.aggr_valinta.draw(self.screen)
+
+        for nappi in self.napit:
+            nappi.draw(self.screen)
+
+        if self.popup:
+            self.popup.draw()
+
+    def handle_event(self, event):
+
+        if self.popup:
+            self.popup.handle_event(event)
+            if self.popup.suljetaan == True:
+                self.popup = None            
+            return
+
+        if event.type == pygame.KEYDOWN and self.nimiboksi.active:
+            self.nimiboksi.handle_event(event)
+            return
+
+        if event.type != pygame.MOUSEBUTTONDOWN:
+            return
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            self.nimiboksi.active = self.nimiboksi.rect.collidepoint(event.pos) #Tekstiboksi aktiivinen tai epäaktiivinen onko klikattu vai ei
+
+        for nappi in self.napit:
+            if nappi.clicked(event.pos):
+                print("CLIKCATTU", nappi.nimi)
+                self.handle_nappi(nappi.nimi)
+                return
+
+        self.ai_valinta.handle_event(event)
+        self.aggr_valinta.handle_event(event)
+        self.strategia_valinta.handle_event(event)
+            
+
+    def handle_nappi(self, valinta):
+        if valinta == "sulje_popup":
+            self.suljetaan = True
+
+        elif valinta == "tallenna":
+            nimi = self.nimiboksi.teksti
+
+            if len(nimi) < 2:
+                self.popup = IlmoitusPopup(self.screen, "NIMEEN TARVITAAN VÄHINTÄÄN 3 MERKKIÄ")
+                return
+
+            for pelaaja in self.pelaajat:  #Ei tuplanimiä
+                if pelaaja is None or pelaaja == self.muokattava:
+                    continue
+                else:
+                    if pelaaja.nimi == nimi:
+                        self.popup = IlmoitusPopup(self.screen, "NIMI ON JO VARATTU")
+                        return
+
+            tiedot = {"nimi": nimi, 
+                "tyyppi": self.tyyppi, 
+                "ai": self.ai_valinta.get(), 
+                "ai_aggressiivisuus": AGGR_VAIHTOEHDOT[self.aggr_valinta.get()], 
+                "ai_strategia": self.strategia_valinta.get(),
+                "indeksi": self.indeksi}
+
+            if self.muokattava == None:
+                if self.simulointi:
+                    self.lisaaKomento("luo_simulointi_pelaaja", self.muokattava, tiedot)
+                else:
+                    self.lisaaKomento("luo_pelaaja", self.muokattava, tiedot)
+                self.suljetaan = True
+                return
+
+            else:
+                self.lisaaKomento("muokkaa_pelaajaa", self.muokattava, tiedot)
+                self.suljetaan = True
+                return
+
+
+class Simulointi:
+
+    def __init__(self, gui_valikko):
+        self.screen = gui_valikko.screen
+        self.gui_valikko = gui_valikko
+        self.tulokset = None
+        self.peleja_simuloitu = 0
+
+        self.napit = []
+        self.napit.append(Nappi(WIDTH//2 - 110, HEIGHT - 140, 220, 60, "peru_simulointi", "PERUUTA", LIGHT_RED, BLACK, BLACK, large_font))
+        self.napit.append(Nappi(WIDTH//2 - 110, HEIGHT - 100, 220, 60, "palaa_menuun", "PALAA MENUUN", GRAY, BLACK, BLACK, large_font))
+
+    def draw(self):
+        if self.tulokset is None:
+            self.napit[0].enabled = True
+            self.napit[1].enabled = False
+            draw_panel(self.screen, (WIDTH // 2 - 250, HEIGHT // 2 - 150, 500, 300))
+            draw_centered_text(self.screen, 
+                "AI-PELIEN SIMULOINTI KÄYNNISSÄ", 
+                (WIDTH // 2, HEIGHT // 2 - 50), large_font, WHITE)
+
+            draw_centered_text(self.screen, 
+                f"ETENEMINEN: {self.peleja_simuloitu} %", 
+                (WIDTH // 2, HEIGHT // 2 + 50), large_font, WHITE)
+
+            for nappi in self.napit:
+                nappi.draw(self.screen)
+
+        else:
+            self.napit[0].enabled = False
+            self.napit[1].enabled = True
+
+            draw_centered_text(self.screen, 
+                "AI-PELIEN SIMULOINTI VALMIS", 
+                (WIDTH // 2, 50), very_large_font, WHITE)
+
+            draw_centered_text(self.screen,
+                f"PELEJÄ SIMULOITIIN: {self.tulokset['pelit']}    KÄSIÄ PELATTIIN: {self.tulokset['pelatut_kadet']}",
+                (WIDTH // 2, 100), medium_font, WHITE)
+
+            showdownit = self.tulokset['pelatut_kadet'] - sum(self.tulokset['fold_voitot'].values())
+
+            pelaajat_x = 320
+            pelaajat_y = 180
+
+            draw_text(self.screen, "AI-tyyppi", (pelaajat_x - 220, pelaajat_y - 55), medium_font, WHITE)
+            draw_text(self.screen, "Aggressiivisuus", (pelaajat_x - 220, pelaajat_y - 30), medium_font, WHITE)
+            draw_text(self.screen, "Strategia", (pelaajat_x - 220, pelaajat_y - 5), medium_font, WHITE)
+            pygame.draw.line(self.screen, GRAY, (pelaajat_x - 220, pelaajat_y + 20), (pelaajat_x + 900, pelaajat_y + 20), 2)
+            draw_text(self.screen, "Koko pelin voittoja", (pelaajat_x - 220, pelaajat_y + 30), medium_font, WHITE)
+            draw_text(self.screen, "Voitettuja käsiä", (pelaajat_x - 220, pelaajat_y + 55), medium_font, WHITE)
+            draw_text(self.screen, "  joista fold-voittoja", (pelaajat_x - 220, pelaajat_y + 80), medium_font, WHITE)
+            pygame.draw.line(self.screen, GRAY, (pelaajat_x - 220, pelaajat_y + 115), (pelaajat_x + 900, pelaajat_y + 115), 3)
+
+            #Pelaajakohtaiset statsit
+            for i, (pelaaja, voitot) in enumerate(self.tulokset["voitot"].items()):
+                #AI perustiedot
+                draw_text(self.screen, f"{pelaaja.ai.luokka if pelaaja.ai.luokka != "Koneoppinut" else pelaaja.ai.malli}", (pelaajat_x + i*250, pelaajat_y - 55), medium_font, WHITE)
+                draw_text(self.screen, f"{AGGR_LUVUT[pelaaja.ai.aggressiivisuus]}", (pelaajat_x + i*250, pelaajat_y - 30), medium_font, WHITE)
+                draw_text(self.screen, f"{pelaaja.ai.strategia}", (pelaajat_x + i*250, pelaajat_y - 5), medium_font, WHITE)
+                #koko pelin voitot
+                draw_text(self.screen, f"{voitot} kpl", (pelaajat_x + i*250, pelaajat_y + 30), medium_font, WHITE)
+                draw_text(self.screen, f"{(100 * voitot / self.tulokset['pelit']):.1f} %", (pelaajat_x + i*250 + 100, pelaajat_y + 30), medium_font, WHITE)
+                #käsien voitot
+                draw_text(self.screen, f"{self.tulokset['kasivoitot'][pelaaja] + self.tulokset['fold_voitot'][pelaaja]} kpl", (pelaajat_x + i*250, pelaajat_y + 55), medium_font, WHITE)
+                draw_text(self.screen, f"{(100 * (self.tulokset['kasivoitot'][pelaaja] + self.tulokset['fold_voitot'][pelaaja]) / self.tulokset['pelatut_kadet']):.1f} %", (pelaajat_x + i*250 + 100, pelaajat_y + 55), medium_font, WHITE)
+                #fold voitot
+                draw_text(self.screen, f"{self.tulokset['fold_voitot'][pelaaja]} kpl", (pelaajat_x + i*250, pelaajat_y + 80), medium_font, WHITE)
+                draw_text(self.screen, f"{(100 * self.tulokset['fold_voitot'][pelaaja] / (self.tulokset['kasivoitot'][pelaaja] + self.tulokset['fold_voitot'][pelaaja]) ):.1f} %", (pelaajat_x + i*250 + 100, pelaajat_y + 80), medium_font, WHITE)
+
+            kadet_x = 130
+            kadet_y = 350
+
+            draw_text(self.screen, "VOITTOKÄDET:", (kadet_x, kadet_y - 30), medium_font)
+            draw_text(self.screen, "PARAS HÄVIÄVÄ KÄSI:", (kadet_x + 700, kadet_y - 30), medium_font)
+
+            draw_centered_text(self.screen, "VOITTOKÄDEN TASAPELI:", (WIDTH // 2, kadet_y - 20), medium_font)
+            draw_centered_text(self.screen, f"{self.tulokset['tasapelit']} kpl", (WIDTH // 2, kadet_y + 10), medium_font)
+
+            for i, (kasi, voitot) in enumerate(self.tulokset["voittokadet"].items()):
+                draw_text(self.screen, f"{kasiluokat[kasi]}", (kadet_x, kadet_y + 20 * i), medium_font)
+                draw_text(self.screen, f"{voitot} kpl", (kadet_x + 150, kadet_y + 20 * i), medium_font)
+                draw_text(self.screen, f"{(100 * voitot / showdownit):.2f} %", (kadet_x + 240, kadet_y + 20 * i), medium_font)
+
+            for i, (kasi, haviot) in enumerate(self.tulokset["parasHaviaja"].items()):
+                draw_text(self.screen, f"{kasiluokat[kasi]}", (kadet_x + 700, kadet_y + 20 * i), medium_font)
+                draw_text(self.screen, f"{haviot} kpl", (kadet_x + 850, kadet_y + 20 * i), medium_font)
+                draw_text(self.screen, f"{(100 * haviot / showdownit):.2f} %", (kadet_x + 940, kadet_y + 20 * i), medium_font)
+
+
+            for nappi in self.napit:
+                nappi.draw(self.screen)
+
+
+    def handle_event(self, event):
+
+        if event.type != pygame.MOUSEBUTTONDOWN:
+            return
+
+        for nappi in self.napit:
+            if nappi.clicked(event.pos):
+                print("CLIKCATTU", nappi.nimi)
+                self.handle_nappi(nappi.nimi)
+                return
+
+    def handle_nappi(self, nappi):
+
+        if nappi == "peru_simulointi":  #Tää muutetaan niin että tulee keskeneräiset tulokset.
+            self.gui_valikko.lisaaKomento("peru_simulointi", None)
+
+        elif nappi =="palaa_menuun":
+            self.gui_valikko.mode = "main"
+            self.resetoi()
+
+    def resetoi(self):
+        self.tulokset = None
+        self.peleja_simuloitu = 0
+
+
+
+class IlmoitusPopup:
+    def __init__(self, screen, teksti, vari=RED):
+        self.screen = screen
+        self.teksti = teksti
+        self.vari = vari
+        self.suljetaan = False
+        self.rect = pygame.Rect(WIDTH // 2 - 320, HEIGHT // 2 - 120, 640, 200)
+        self.nappi = Nappi(WIDTH // 2 - 100, self.rect.y + 115, 200, 60, "ok", "OK", GRAY, BLACK, BLACK, large_font)
+
+    def draw(self):
+
+        #pop-up tausta
+        pygame.draw.rect(self.screen, self.vari, self.rect, border_radius=8)
+        pygame.draw.rect(self.screen, BLACK, self.rect, width=3, border_radius=8)
+        draw_centered_text(self.screen, self.teksti, (self.rect.centerx, self.rect.y + 60), large_font, BLACK)
+        self.nappi.draw(self.screen)
+
+    def handle_event(self, event):
+        if event.type != pygame.MOUSEBUTTONDOWN:
+            return
+        if self.nappi.clicked(event.pos):
+            self.suljetaan = True
+
+
+
 class Nappi:
     def __init__(self, x, y, leveys, korkeus, nimi, teksti, vari, kehys=None, tekstivari=BLACK, font=medium_font):
         self.rect = pygame.Rect(x, y, leveys, korkeus)
@@ -597,180 +915,6 @@ class Tekstiboksi:
 
     def get(self):
         return self.teksti
-
-
-class Muokkaus_popup:
-    def __init__(self, gui_valikko, pelaaja, indeksi, simulointi = False):
-        self.screen = gui_valikko.screen
-        self.pelaajat = gui_valikko.pelaajat if simulointi == False else gui_valikko.simulointiPelaajat
-        self.muokattava = pelaaja
-        self.indeksi = indeksi
-        self.lisaaKomento = gui_valikko.lisaaKomento
-        self.suljetaan = False
-        self.simulointi = simulointi
-
-        #Muokattavat arvot
-        self.nimi = ""
-        self.tyyppi = ""
-        self.oma_pelaaja = False
-        self.ai = None
-        self.ai_aggressiivisuus = None
-        self.ai_strategia = None
-
-        self.popup = None
-
-        if pelaaja == gui_valikko.oma_pelaaja:
-            self.oma_pelaaja = True
-            self.nimi = pelaaja.nimi
-            self.tyyppi = pelaaja.tyyppi
-
-
-        elif pelaaja is not None:
-            self.nimi = pelaaja.nimi
-            self.tyyppi = pelaaja.tyyppi
-            if pelaaja.ai is not None:
-                self.ai = pelaaja.ai.luokka
-                self.ai_aggressiivisuus = pelaaja.ai.aggressiivisuus
-                self.ai_strategia = pelaaja.ai.strategia
-
-        else:
-            self.nimi = arvoNimi()
-            self.tyyppi = "Tietsikka"
-            self.ai = "Monte Carlo"
-            self.ai_aggressiivisuus = 2
-            self.ai_strategia = None
-
-
-        #Boksit, napit ym piirtotietoja
-        self.rect = pygame.Rect(400, 100, WIDTH-800, HEIGHT-200)  #tausta
-        self.napit = []
-        self.napit.append(Nappi(self.rect.centerx - 120, HEIGHT - 170, 100, 50, "tallenna", "TALLENNA", LIGHT_BLUE, BLACK, BLACK, medium_font))
-        self.napit.append(Nappi(self.rect.centerx + 20, HEIGHT - 170, 100, 50, "sulje_popup", "PERUUTA", RED, BLACK, BLACK, medium_font))
-        self.nimiboksi = Tekstiboksi( (self.rect.centerx-120, 170, 240, 40), self.nimi)
-        self.ai_valinta = RullaavaValinta(AI_VAIHTOEHDOT, (self.rect.centerx - 180, 385, 360, 50))
-        self.aggr_valinta = RullaavaValinta(list(AGGR_VAIHTOEHDOT.keys()), (self.rect.centerx - 180, 495, 360, 50))
-
-    def draw(self):
-
-        #pop-up tausta
-        pygame.draw.rect(self.screen, LIGHT_GRAY, self.rect, border_radius=8)
-        pygame.draw.rect(self.screen, BLACK, self.rect, width=3, border_radius=8)
-
-        draw_centered_text(self.screen, "NIMI:", (self.rect.centerx, 150), large_font, BLACK)
-        self.nimiboksi.draw(self.screen)
-
-        #draw_centered_text(self.screen, f"{self.nimi}", (self.rect.centerx, 190), large_font, BLACK)
-
-        draw_centered_text(self.screen, "TYYPPI:", (self.rect.centerx, 260), large_font, BLACK)
-        draw_centered_text(self.screen, "Oma pelaajasi" if self.oma_pelaaja else f"{self.tyyppi}", (self.rect.centerx, 300), large_font, BLACK)
-       
-        if self.ai:
-            draw_centered_text(self.screen, "AI-LUOKKA:", (self.rect.centerx, 370), large_font, BLACK)
-            #draw_centered_text(self.screen, f"{self.ai}", (self.rect.centerx, 410), large_font, BLACK)
-            self.ai_valinta.draw(self.screen)
-
-            draw_centered_text(self.screen, "AGGRESSIIVISUUS:", (self.rect.centerx, 480), large_font, BLACK)
-            #draw_centered_text(self.screen, f"{self.ai_aggressiivisuus}", (self.rect.centerx, 520), large_font, BLACK)
-            self.aggr_valinta.draw(self.screen)
-
-        for nappi in self.napit:
-            nappi.draw(self.screen)
-
-        if self.popup:
-            self.popup.draw()
-
-    def handle_event(self, event):
-
-        if self.popup:
-            self.popup.handle_event(event)
-            if self.popup.suljetaan == True:
-                self.popup = None            
-            return
-
-        if event.type == pygame.KEYDOWN and self.nimiboksi.active:
-            self.nimiboksi.handle_event(event)
-            return
-
-        if event.type != pygame.MOUSEBUTTONDOWN:
-            return
-
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            self.nimiboksi.active = self.nimiboksi.rect.collidepoint(event.pos) #Tekstiboksi aktiivinen tai epäaktiivinen onko klikattu vai ei
-
-        for nappi in self.napit:
-            if nappi.clicked(event.pos):
-                print("CLIKCATTU", nappi.nimi)
-                self.handle_nappi(nappi.nimi)
-                return
-
-        self.ai_valinta.handle_event(event)
-        self.aggr_valinta.handle_event(event)
-            
-
-    def handle_nappi(self, valinta):
-        if valinta == "sulje_popup":
-            self.suljetaan = True
-
-        elif valinta == "tallenna":
-            nimi = self.nimiboksi.teksti
-
-            if len(nimi) < 2:
-                self.popup = IlmoitusPopup(self.screen, "NIMEEN TARVITAAN VÄHINTÄÄN 3 MERKKIÄ")
-                return
-
-            for pelaaja in self.pelaajat:  #Ei tuplanimiä
-                if pelaaja is None or pelaaja == self.muokattava:
-                    continue
-                else:
-                    if pelaaja.nimi == nimi:
-                        self.popup = IlmoitusPopup(self.screen, "NIMI ON JO VARATTU")
-                        return
-
-            tiedot = {"nimi": nimi, 
-                "tyyppi": self.tyyppi, 
-                "ai": self.ai_valinta.get(), 
-                "ai_aggressiivisuus": AGGR_VAIHTOEHDOT[self.aggr_valinta.get()], 
-                "ai_strategia": self.ai_strategia,
-                "indeksi": self.indeksi}
-
-            if self.muokattava == None:
-                if self.simulointi:
-                    self.lisaaKomento("luo_simulointi_pelaaja", self.muokattava, tiedot)
-                else:
-                    self.lisaaKomento("luo_pelaaja", self.muokattava, tiedot)
-                self.suljetaan = True
-                return
-
-            else:
-                self.lisaaKomento("muokkaa_pelaajaa", self.muokattava, tiedot)
-                self.suljetaan = True
-                return
-
-
-
-class IlmoitusPopup:
-    def __init__(self, screen, teksti, vari=RED):
-        self.screen = screen
-        self.teksti = teksti
-        self.vari = vari
-        self.suljetaan = False
-        self.rect = pygame.Rect(WIDTH // 2 - 320, HEIGHT // 2 - 120, 640, 200)
-        self.nappi = Nappi(WIDTH // 2 - 100, self.rect.y + 115, 200, 60, "ok", "OK", GRAY, BLACK, BLACK, large_font)
-
-    def draw(self):
-
-        #pop-up tausta
-        pygame.draw.rect(self.screen, self.vari, self.rect, border_radius=8)
-        pygame.draw.rect(self.screen, BLACK, self.rect, width=3, border_radius=8)
-        draw_centered_text(self.screen, self.teksti, (self.rect.centerx, self.rect.y + 60), large_font, BLACK)
-        self.nappi.draw(self.screen)
-
-    def handle_event(self, event):
-        if event.type != pygame.MOUSEBUTTONDOWN:
-            return
-        if self.nappi.clicked(event.pos):
-            self.suljetaan = True
-
 
 class RullaavaValinta:
 
@@ -844,8 +988,10 @@ MAIN_NAPIT = [
     ("poistu", "POISTU")
     ]
 
-AI_VAIHTOEHDOT = ["Monte Carlo", "Satunnainen", "Koneoppinut"]
+AI_VAIHTOEHDOT = ["Monte Carlo", "Satunnainen", "Koneoppinut", "Koneoppinut 500k", "Koneoppinut 1M", "Koneoppinut 2M", "Koneoppinut 5M"]
 AGGR_VAIHTOEHDOT = {"Normaali": 2, "Aggressiivinen": 3, "Maltillinen": 1}
+AGGR_LUVUT = {1: "Maltillinen", 2: "Normaali", 3: "Aggressiivinen"}
+STRATEGIA_VAIHTOEHDOT = ["Normaali", "Deterministinen", "Vahvat kädet"]
 
 etunimet = [
     "Pokeri", "Jokeri", "Jätkä", "Ässä", "Hertta",
@@ -866,3 +1012,24 @@ takanimet = [
     "Riepu", "Naksu", "Bingo", "Ruu", "Pimu",
     "Repe", "Boss", "Tiuku", "Akka", "Keke"
 ]
+
+kasiluokat = {
+    0: "Hai <9",
+    1: "Hai 9-12",
+    2: "Hai >12",
+    3: "Pari pieni",
+    4: "Pari 6-9",
+    5: "Pari 10-12",
+    6: "Pari >12",
+    7: "Kaksi paria, <7",
+    8: "Kaksi paria, 7-11",
+    9: "Kaksi paria, >11",
+    10: "Kolmoset pieni",
+    11: "Kolmoset 6-9",
+    12: "Kolmoset > 9",
+    13: "Suora",
+    14: "Väri",
+    15: "Täyskäsi",
+    16: "Neloset",
+    17: "Värisuora"
+}
