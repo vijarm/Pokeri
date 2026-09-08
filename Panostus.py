@@ -2,6 +2,10 @@ from Pelaaja import Pelaaja
 
 
 class PanostusKierros:
+    '''Yksittäinen panostuskierros, jossa käydään läpi aktiivisien pelaajien valintoja (maksu, korotus, luovutus).
+    Kierros päättyy, kun kierroksen aikana ei ole tullut uusia korotuksia, kun kaikki paitsi yksi pelaajaa on all-in,
+    tai jos kaikki paitsi yksi pelaaja on luovuttanut.'''
+
     def __init__(self, jako, pelipoyta, kierros=2):
         self.jako = jako
         self.pelipoyta = pelipoyta
@@ -19,8 +23,10 @@ class PanostusKierros:
         self.voittaja = None
         self.fold_voitto = False
 
-    #Panostuskierroksen päälooppi
     def paivitaTila(self):
+        '''Päivittää panostuskierroksen tilaa, tarkistaa päättymisen ehdot.
+        Muuttaa tilaksi fold_voitto, jos kaikki paitsi yksi pelaaja on luovuttanut.
+        Tietokoneet tekevät päätökset välittömästi, ihmispelaajan kohdalla odotetaan GUI-valintaa.'''
 
         if self.valmis:
             return
@@ -105,6 +111,7 @@ class PanostusKierros:
 
 
     def kasittelePanostus(self, pelaaja: Pelaaja, valinta):
+        '''Käsittelee panostuksesta tehdyn valinnan. Varmistaa että valinta on sallittu, ja syöttää valinnan maksaPanos -funktiolle.'''
 
         maksettavaa = self.suurinKorotus - pelaaja.maksettuPanostukseen
 
@@ -152,6 +159,9 @@ class PanostusKierros:
 
 
     def maksaPanos(self, pelaaja: Pelaaja, maara: int) -> int:  #Tätä varmaan voisi tiivistää/selkeyttää, mutta toimii
+        '''Käsittelee panostuksen maksamisen. Laskee lopullisen oikean summan niin, että pelaajan chipsit eivät voi mennä negatiiviseksi.
+        Siirtää tarvittaessa pelaajan all-in tilaan. Lisää maksetut chipsit pottiin.'''
+
         if pelaaja.chips > maara:
             self.jako.potti += maara
             pelaaja.maksettuPanostukseen += maara
@@ -171,18 +181,21 @@ class PanostusKierros:
             pelaaja.allin = True
             self.pelipoyta.paivitaGUI("pelipoyta", {"tapahtuma": "pelaajailmoitus", "pelaaja": pelaaja.nimi, "ilmoitus": "ALL-IN!"})
 
-
         #print("\nTämä pelaaja on nyt maksanut panostukseen,", pelaaja.maksettuPanostukseen, "ja koko jakoon", pelaaja.maksettuJakoon, "\n")
         return maara #Palauttaa pottiin maksettujen chippien määrän
 
 
     def vastaanotaPanostus(self, pelaaja, valinta):
+        '''Siirtää GUI:sta tulleen panostusvalinnan maksettavaksi.'''
         assert pelaaja is not None
 
         self.kasittelePanostus(pelaaja, valinta)
         self.vuoro += 1
 
     def lopetaKierros(self):
+        '''Päättää panostuskierroksen. Tarkistaa onko jokin pelaaja maksanut liikaa, ja palauttaa liikaa maksetun osuuden.
+        Nollaa pelaajien panostuskierroksen tiedot. Jos pelaajia on jäljellä vain yksi, kirjaa siitä fold_voiton.'''
+
         #Tarkistetaanko onko joku maksanut "liikaa" -> korotus johon kukaan ei ole vastannut palautetaan
         SuurinPanosEnsin = sorted(self.jako.pelaajat, key=lambda p: p.maksettuPanostukseen, reverse=True)
 
@@ -216,9 +229,10 @@ class PanostusKierros:
             self.valmis = True
             self.odottaaValintaa = False
 
-#Tätä käytetään koneoppivan AI:n koulutuksessa. Tätä olisi varmaan kannattanut miettiä niin, 
-#että kaikki tiedot olisivat joka tapauksessa pelaajanakyma -oliossa, eikä erillistä statea luotaisi.
+#Tämä olisi kuulunut tehdä yhteen pelaajanakyma -olion kanssa, eikä erillistä statea luotaisi.
 def muodostaGameStateAI(pelaaja, pelipoyta):  
+    '''Käytössä koneopetetulla AI:lla, luodaan gamestate johon perustuen AI tekee päätöksen.
+    Asettaa tietyt arvot pooleihin, joilla rajataan gamestate -avaruuden laajuutta.'''
 
     assert pelaaja.ai is not None, "Funktio vain koneopetettavan AI:n käytössä"
 

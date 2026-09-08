@@ -3,10 +3,14 @@ import random
 Maat = ["PATA", "HERTTA", "RISTI", "RUUTU"]
 
 class Pakka:
+    '''Korttipakka, koostuu Kortti-olioista.'''
+
     def __init__(self):
         self.kortit=[]
     
     def luo_pakka(self):
+        '''Luo tavallisen 52 kortin pakan.'''
+        
         for maa in Maat:
             for i in range(2, 15):
                 self.kortit.append(Kortti(maa, i))
@@ -32,6 +36,8 @@ class Pakka:
     
 
 class Kortti:
+    '''Yksittäisen pelikortin olio.'''
+
     def __init__(self, maa, numero, alaspain=False):
         self.maa: str = maa
         self.numero: int = numero

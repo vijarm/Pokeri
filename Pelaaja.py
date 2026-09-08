@@ -11,6 +11,8 @@ AI_TYYPIT = {
 }
 
 class Pelaaja:
+    '''Pelaaja-olio pitää kirjaa pelaajan tiedoista, valinnoista, pelivaiheista, sekä onko kyseessä AI vai ihmispelaaja.'''
+
     def __init__(self, nimi, tyyppi, AI_valinta=None, AI_asetukset=None):
         self.nimi: str = nimi
         self.tyyppi: str = tyyppi
@@ -44,6 +46,8 @@ class Pelaaja:
         print(f"{self.nimi}, {self.tyyppi}, stack: {self.chips}")
 
     def nollaaKierros(self):
+        '''Nollaa yksittäisen jaon tiedot'''
+
         self.kasikortit = []
         self.allin = False
         self.folded = False
@@ -53,10 +57,14 @@ class Pelaaja:
             self.ai.nollaaKierros()
 
     def nollaaPanos(self):
+        '''Nollaa panostuskierroksen tiedot'''
+
         self.maksettuPanostukseen = 0
         self.valinta = 0
 
     def nollaaKokoPeli(self):
+        '''Nollaa koko pelin tiedot'''
+
         self.chips = 10000
         self.aktiivinen = True
         self.nollaaKierros()
@@ -66,12 +74,11 @@ class Pelaaja:
         print(f"Pelaaja {self.nimi}, käsikortit: {self.kasikortit}")
 
     def muokkaa(self, tiedot):
+        '''Muokkaa pelaajaa saatujen tietojen perusteella, käytössä kun GUI:lta tulee muokkaus -komento.'''
+
         self.nimi = tiedot["nimi"]
         self.tyyppi = tiedot["tyyppi"]
         if tiedot["ai"] is not None:
-
-            #ai_luokka = AI_TYYPIT[tiedot["ai"]]
-            #asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": tiedot["ai"], "strategia": tiedot["ai_strategia"]}
             
             if tiedot["ai"] in ("Koneoppinut", "Koneoppinut 500k", "Koneoppinut 1M", "Koneoppinut 2M", "Koneoppinut 5M"): 
                 luokka = "Koneoppinut" # Nämä kuuluisi oikeasti yhdeksi pääluokaksi ja malli pitäisi olla oma erillinen valinta GUI:ssa...
@@ -84,8 +91,6 @@ class Pelaaja:
             self.ai = AI_TYYPIT[luokka](self, asetukset)
             self.ai_tyyppi = tiedot["ai"]
 
-
-
     
     def pyydaPanostus(self, kierros=2) -> int:  #Onko tälle enää tarvetta, suoraan ohi?
 
@@ -93,41 +98,13 @@ class Pelaaja:
 
         return self.ai.pyydaPanostus(kierros)
 
-    '''
-    def pyydaPanostusTeksti(self, kierros=2) -> int:
-
-        if self.ai is not None: 
-            valinta = self.ai.pyydaPanostus(kierros)
-
-        else:
-            if ((self.nakyma.maksettavaa is None) or (self.nakyma.pieniKorotus is None) or (self.nakyma.suuriKorotus is None) or (self.nakyma.panos is None)):
-                raise ValueError("Panostuksesta puuttuu arvoja!")
-
-            maksettavaa = self.nakyma.maksettavaa
-            pieniKorotus = self.nakyma.pieniKorotus
-            suuriKorotus = self.nakyma.suuriKorotus
-            print("Maksettavaa:", maksettavaa, "|| Käsikortit:", self.nakyma.kasikortit, "|| Potti:", self.nakyma.potti)
-
-            print("1. Check") if maksettavaa == 0 else print("1. Call, maksa:", min(maksettavaa, self.nakyma.chips))
-            if (pieniKorotus > 0 and not any(p.valinta == 3 for p in self.nakyma.muutPelaajat)): 
-                print("2. Pieni korotus:", pieniKorotus + maksettavaa, "| korotuksen osuus:", pieniKorotus)
-            if (suuriKorotus > 0 and suuriKorotus > pieniKorotus):
-                print("3. Suuri korotus:", suuriKorotus + maksettavaa, "| korotuksen osuus:", suuriKorotus)
-            print("4. Fold, menetät pottiin maksetut:", self.nakyma.maksettuJakoon)
-
-            try:
-                valinta = int(input("Valintasi: "))
-                if valinta not in (1,2,3,4):
-                    valinta = 1
-            except ValueError:
-                valinta = 1
-
-        return int(valinta) 
-    '''
-      
-
+    
 
 class PelaajaNakyma:
+    '''PelaajaNakymaan kerätään pelitilanteesta sellaiset luontaiset tiedot, jotka pelaajalla on tiedossa.
+    Näkymää käytetään GUI:n pelitilanteen piirtämisessä, sekä valintojen tekemisessä, myös AI-pelaajilla.
+    Ei sisällä arkaluontoista dataa, kuten täysiä pelaaja-olioita.'''
+
     def __init__(self, pelaaja, pelipoyta):
 
         self.nimi = pelaaja.nimi
@@ -180,6 +157,8 @@ class PelaajaNakyma:
 
 
     def to_dict(self):
+        '''Muuntaa PelaajaNakyman verkkosiirtoa varten dict-muotoon.'''
+
         return {
             "nimi": self.nimi,
             "aktiivinen": self.aktiivinen,
@@ -212,6 +191,8 @@ class PelaajaNakyma:
 
     @classmethod
     def from_dict(cls, data):
+        '''Palauttaa verkkosiirrosta vastaanotetun dict-muotoisen PelaajaNakyman takaisin olioksi.'''
+
         obj = cls.__new__(cls)
 
         obj.nimi = data["nimi"]
@@ -246,6 +227,9 @@ class PelaajaNakyma:
      
 
 class MuutNakee:
+    '''Luo pelaajasta sellaiset pelitiedot, jotka ovat muilla pöydän pelaajilla luontaisesti tiedossa.
+    Ei sisällä arkaluontoista dataa, kuten käsikortteja (paitsi showdownissa, jolloin kortit paljastetaan).'''
+
     def __init__(self, pelaaja, pelipoyta):
         self.nimi = pelaaja.nimi
         self.tyyppi = pelaaja.tyyppi
@@ -265,6 +249,8 @@ class MuutNakee:
         else: self.kasikortit = []
 
     def to_dict(self):
+        '''Muuntaa olion dict-muotoon verkkosiirtoa varten.'''
+
         return {
             "nimi": self.nimi,
             "tyyppi": self.tyyppi,
@@ -281,6 +267,8 @@ class MuutNakee:
 
     @classmethod
     def from_dict(cls, data):
+        '''Palauttaa verkkosiirrosta vastaanotetun dictin olioksi.'''
+
         obj = cls.__new__(cls)
 
         obj.nimi = data["nimi"]

@@ -7,6 +7,7 @@ from viestit import Paivitys, Komento
 
 
 class Peli:
+    '''Koko pelin pääluokka'''
 
     def __init__(self, gui=None):
         self.pelipoyta = None
@@ -25,6 +26,7 @@ class Peli:
         self.transport = Transport()
 
     def paivitaTila(self):
+        '''Pelin tai simuloinnin ollessa käynnissä päivitetään jokaisella tickillä pelin tila'''
 
         if self.mode == "pelipoyta":
 
@@ -50,6 +52,7 @@ class Peli:
 
 
     def kasitteleKomento(self, komento, client):
+        '''Käsittelee GUI:lta enginelle tulevat komennot'''
 
         #print("Käsitellään komento", komento.tapahtuma, komento.tiedot)
 
@@ -304,6 +307,9 @@ class Peli:
 
 
     def luoPelaaja(self, tiedot):
+        '''Luo uuden pelaajan GUI:lta / verkosta tulleiden tietojen mukaisesti'''
+
+        #AI-pelaajan luominen
         if tiedot["ai"] is not None:
             if tiedot["ai"] in ("Koneoppinut", "Koneoppinut 500k", "Koneoppinut 1M", "Koneoppinut 2M", "Koneoppinut 5M"): 
                 luokka = "Koneoppinut" # Nämä kuuluisi oikeasti yhdeksi pääluokaksi ja malli pitäisi olla oma erillinen valinta GUI:ssa...
@@ -314,10 +320,13 @@ class Peli:
             asetukset = {"aggressiivisuus": tiedot["ai_aggressiivisuus"], "luokka": luokka, "strategia": tiedot["ai_strategia"], "malli": malli}
             return Pelaaja(tiedot["nimi"], tiedot["tyyppi"], luokka, asetukset)
 
+        #Ihmispelaajan luominen
         else:
             return Pelaaja(tiedot["nimi"], tiedot["tyyppi"])
 
-    def varmistaVapaaNimi(self, nimi, ohita=None):  #Pelaajilla ei nyt ole erillistä ID:tä vaan nimi on tunniste, joten sen täytyy olla uniikki
+    def varmistaVapaaNimi(self, nimi, ohita=None):  
+        '''Pelaajilla ei ole erillistä ID:tä vaan nimi on tunniste. Funktio lisää nimen perään numeroita, mikäli nimi on jo käytössä.'''
+
         alkuperainen = nimi
         numero = 1
 
@@ -331,6 +340,7 @@ class Peli:
             numero += 1
 
     def varmistaKaikkienNimet(self):
+        '''Varmistaa, että kaikilla pelin aloittavilla pelaajilla on uniikit nimet.'''
         for pelaaja in self.pelaajat:
             if pelaaja is None:
                 continue
@@ -338,6 +348,7 @@ class Peli:
             pelaaja.nimi = self.varmistaVapaaNimi(pelaaja.nimi, ohita=pelaaja)
 
     def nollaaVerkkopeli(self):
+        '''Nollaa kaikki verkkopelin tiedot, tyhjentää client-pelaaja-client listat, sekä yleisen pelaajalistan muista paitsi omasta pelaajasta.'''
         self.transport.vaihdaLocaliksi()
         self.client_pelaaja.clear()
         self.pelaaja_client.clear()
@@ -348,10 +359,14 @@ class Peli:
 
 
     def paivitys_to_gui(self, tyyppi, tiedot, nakyma=None):
+        '''Lähettää engineltä päivityksen omalle GUI:lle'''
+
         paivitys = Paivitys(tyyppi, tiedot, nakyma)
         self.transport.send_to_own_gui(paivitys)
 
     def paivitys_to_player(self, pelaaja, tyyppi, tiedot, nakyma=None):
+        '''Lähettää engineltä päivityksen tietyn pelaajan GUI:lle'''
+
         paivitys = Paivitys(tyyppi, tiedot, nakyma)
 
         if pelaaja.tyyppi == "host":
@@ -362,12 +377,15 @@ class Peli:
             self.transport.send_to_client(client, paivitys)
 
     def paivitys_to_all_gui(self, tyyppi, tiedot, nakyma=None):
+        '''Lähettää engineltä päivityksen kaikkien pelaajien GUI:lle'''
+
         paivitys = Paivitys(tyyppi, tiedot, nakyma)
         self.transport.send_to_all_gui(paivitys)
 
 
 
 class Simulointi:
+    '''Simulointi-olio, johon kerätään tilastot simuloinnin aikana tapahtuvien pelien tuloksista ja esiintyneistä käsiluokista.'''
 
     def __init__(self, pelaajat, peleja, paivitys_to_gui):
         self.pelaajat = pelaajat
@@ -395,7 +413,9 @@ class Simulointi:
             self.parasHaviaja[i] = 0
 
     def pelaa(self):
-        for _ in range(10):  #Pelataan 10 ennen kuin antaa tickata GUI
+        '''Pelaa -funktio ajetaan simuloinnissa jokaisella tickillä. Yhden tickin aikana peli simuloi 10 kokonaista peliä alusta loppuun.'''
+
+        for _ in range(10): 
             simulointi_peli = Pelipoyta(self.pelaajat, simulointi = self)
             while True:
                 simulointi_peli.paivitaTila()
@@ -412,9 +432,12 @@ class Simulointi:
                 self.valmis = True
                 break
 
+        #Lähetetään GUI:lle päivityksenä pelattujen pelien osuus simulointiin valitusta kokonaispelimäärästä.
         self.paivitys_to_gui("simulointi_paivitys", {"pelattu": int((self.pelattu / self.peleja) * 100)})
                         
     def tulosta(self):
+        '''Tulosta -apufunktio, debug/testi-käytössä, jos simuloinnin tietoja haluaa tekstinä terminaliin.'''
+
         print("SIMULOINTI VALMIS, KÄSIÄ PELATTIIN YHTEENSÄ", self.pelatutKadet, "KPL", self.pelattu, "PELISSÄ")
         for pelaaja, voitot in self.voitot.items():
             print("PELAAJA:", pelaaja.nimi, "|| VOITOT:", voitot, "|| FOLD-VOITOT:", self.fold_voitot[pelaaja], "|| KÄSIVOITOT:", self.kasivoitot[pelaaja], "|| LISÄTIEDOT:", pelaaja.ai_tyyppi, pelaaja.ai.asetukset)
@@ -426,6 +449,8 @@ class Simulointi:
             print("KÄSI:", kasi, "|| VOITTOJA:", arvo)
 
     def get_tulokset(self):
+        '''Palauttaa simulointi-olioon kerätyt tilastot'''
+
         tulokset = {
             "pelit": self.pelattu,
             "pelatut_kadet": self.pelatutKadet,
@@ -441,6 +466,7 @@ class Simulointi:
 
 
 def main():
+    '''Main -funktio, käynnistää pelin.'''
 
     peli = Peli()
     gui = GUI(peli.oma_pelaaja, peli.transport)

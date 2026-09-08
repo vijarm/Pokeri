@@ -3,6 +3,8 @@ from Pelaaja import Pelaaja
 from Panostus import PanostusKierros
 
 class Jako:
+    '''Pelin yksittäinen jako, jossa käsitellään pelin kulku ja tilat korttien jaosta kierroksen voittajan löytymiseen saakka.'''
+
     def __init__(self, pelipoyta):
         self.pelipoyta = pelipoyta
         self.pakka = pelipoyta.pelipakka
@@ -30,8 +32,8 @@ class Jako:
         self.pakka.sekoita()
 
 
-    #Jakokierroksen päälooppi läpi, jako -> panostus1 -> vaihdot -> panostus2 -> showdown
     def paivitaTila(self):
+        '''Päivittää jaon tilan etenemistä, aloitus -> panostus1 -> vaihdot -> panostus2 -> showdown'''
         if self.tila == "alku":
             self.aloitaJako()
 
@@ -77,8 +79,9 @@ class Jako:
             self.paivitaShowdown()
 
 
-
     def aloitaJako(self):
+        '''Aloittaa jaon, kerää mukana olevilta pelaajilta alkupanokset ja jakaa kortit.'''
+
         assert len(self.pelaajat) >= 2, "Pelin ei kuulu siirtyä jakoon jos aktiivisia pelaajia on vähemmän kuin 2"
         self.pelipoyta.pelivaihe = 0
         self.pelipoyta.paivitaNakymat()
@@ -98,41 +101,19 @@ class Jako:
         self.panostuskierros = PanostusKierros(self, self.pelipoyta, kierros=1)
         self.tila = "panostus1"
 
-    '''
-    def autoKierros(self) -> list:
-        self.pelipoyta.paivitaNakymat()
-        self.keraaAlkupanokset()            
-        self.jaaKortit()
-        self.pelipoyta.paivitaNakymat()
-
-        #Sitten kun voi automatisoida niin tähän väliin tulee:
-        #panostuskierros 
-
-        for i in range(1, len(self.pelaajat) + 1):
-            vuorossa = self.pelaajat[(i + self.jakaja) % len(self.pelaajat)]
-            if vuorossa in self.mukanaPotissa:
-                vuorossa.vaihtoja = self.pyydaVaihtoAI(vuorossa)
-
-        #Sitten kun voi automatisoida niin tähän väliin tulee:
-        #panostuskierros                         
-        
-        self.pelipoyta.paivitaNakymat()
-        self.kerroKortit()
-        voittaja = self.vertaaKadet(self.mukanaPotissa)
-        voittajalista = self.jaaPotti()
-        print("")
-        print("Voittaja:", voittaja)
-        return (voittajalista)
-    '''
 
     def keraaAlkupanokset(self): 
+        '''Kerää pelaajilta alkupanokset, muuttaa pelaajan all-in tilaan jos kaikki pelimerkit maksetaan alkupanoksessa.'''
+
         for pelaaja in self.pelaajat:
             assert pelaaja.aktiivinen == True #Vain aktiiviset on mukana jakokierroksella
+
             if pelaaja.chips > self.panos:
                 pelaaja.chips -= self.panos
                 pelaaja.maksettuJakoon += self.panos
                 self.potti += self.panos
-            else:
+
+            else:  #Jos pelaaja menee all-in alkupanoksen vuoksi
                 self.potti += pelaaja.chips
                 pelaaja.maksettuJakoon += pelaaja.chips
                 pelaaja.chips = 0
@@ -150,6 +131,8 @@ class Jako:
 
 
     def jaaKortit(self): 
+        '''Jaetaan jokaiselle pelaajalle 5 aloituskorttia.'''
+
         alkukadet = self.pakka.jaaKortit(len(self.pelaajat), 5)
         for i in range(len(alkukadet)):
             self.pelaajat[i].kasikortit = alkukadet[i]
@@ -157,12 +140,15 @@ class Jako:
                 self.pelaajat[i].ai.kasidata = laskeArvot(self.pelaajat[i].kasikortit, vaihtoja = True)
     
     def kerroKortit(self):
+        '''Tulostaa käsikortit konsoliin, debuggaukseen'''
         for pelaaja in self.pelaajat:
             print("Pelaaja:", pelaaja.nimi, "käsikortit: ", pelaaja.kasikortit)
         print ("Pakkaan jäi kortteja:", len(self.pakka.kortit))
 
 
     def vertaaKadet(self, pelaajat: list) -> list:  #Tarvitaanko mihinkään tätä funktiota välissä?
+        '''Kutsuu aktiivisien pelaajien listalla pistelaskun haeVoittaja-funktiota, ja palauttaa vertailussa parhaan käden omaavan pelaajan.'''
+
         aktiiviset = []
         for pelaaja in pelaajat:
             if pelaaja.aktiivinen: 
@@ -171,6 +157,7 @@ class Jako:
 
 
     def pyydaVaihtoAI(self, pelaaja: Pelaaja): 
+        '''Pyytää tietokonepelaajan ai-luokalta vaihdettavia kortteja. Vaihtaa vastauksena saadut kortit.'''
 
         #print("Vuorossa", pelaaja.nimi, "|| käsikortit: ", pelaaja.kasikortit)
         assert pelaaja.ai is not None, "AI:n vaihtofunktioon ohjataan vain AI pelaajat"
@@ -198,6 +185,9 @@ class Jako:
         return vaihdettu
 
     def paivitaVaihdot(self):
+        '''Seuraa vaihtovuorojen tilaa, tietokonepelaajat vaihtavat suoraan ja ihmispelaajan kohdalla lähetetään GUI:lle pyyntö vaihdoista.
+        Siirtää ihmispelaajalta tulleen vaihtopyynnön käsiteltäväksi kun päätös on tullut GUI:sta komennolla.'''
+
         self.pelipoyta.pelivaihe = 2
 
         if self.vaihtoOdottaa:
@@ -237,7 +227,9 @@ class Jako:
         return
 
 
-    def vastaanotaVaihdot(self, vaihtoindeksit):  #ihmispelaajan vaihdot
+    def vastaanotaVaihdot(self, vaihtoindeksit): 
+        '''Käsittelee ihmispelaajalta GUI:sta tulleen vaihtopäätöksen, poistaa vaihdettavat kortit ja nostaa uudet.'''
+
         assert self.vaihtoOdottaa
         assert self.vaihtoPelaaja is not None
 
@@ -259,6 +251,8 @@ class Jako:
 
 
     def aloitaShowdown(self):
+        '''Käynnistää showdown-vaiheen, ilmoittaa GUI:lle showdownin alkamisesta.'''
+
         self.pelipoyta.pelivaihe = 4
         self.pottiaJaljella = self.potti
         self.voittajalista = []
@@ -270,6 +264,8 @@ class Jako:
 
 
     def paivitaShowdown(self):
+        '''Päivittää showdownin tilaa. Odottaa tarvittaessa ihmispelaajan ok -kuittausta GUI:sta.
+        Jatkaa showdown-tilassa kunnes koko potti on jaettu. Lisää voittajalistaan voittaneet pelaajat sekä voitetun potin.'''
 
         if self.showdownOdottaa:
 

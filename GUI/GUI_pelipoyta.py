@@ -47,6 +47,7 @@ large_font = settings.large_font
 
 
 class GUI_pelipoyta:
+    '''Käynnissä olevan pelin GUI-näkymä. Pelipöytä, käsikortit, pelaajien valitojen tekeminen, animaatiot ym.'''
 
     def __init__(self, screen, nakyma, kortit_sheet, lisaaKomento):
         self.screen = screen
@@ -72,10 +73,14 @@ class GUI_pelipoyta:
         self.valintapaneeli.resetoi()
 
     def asetaNakyma(self, uusinakyma):
+        '''Asettaa uuden Pelaajanakyma -olion. Pelipöydän piirtäminen perustuu olion tietoihin.'''
+
         self.nakyma = uusinakyma
         self.valintapaneeli.nakyma = uusinakyma
 
     def handle_tapahtuma(self, tiedot):
+        '''Engineltä tulleiden päivityksien käsittely.'''
+
         if tiedot["tapahtuma"] == "fold_voitto":
             self.valintapaneeli.mode = "fold_voitto"
             self.valintapaneeli.showdownData = tiedot["showdownData"]
@@ -162,7 +167,7 @@ class GUI_pelipoyta:
 
 
 
-    #Animaatiofunktiot
+    #Animaatiofunktiot, animaatiot importattu omasta animaatiot.py tiedostosta.
 
     def jaaKortit(self):
         jakoAnimaatio = Korttijako(self)
@@ -188,20 +193,16 @@ class GUI_pelipoyta:
         self.valintapaneeli.mode = "ilmoitus"
         self.animaatiot.append(OdotusAnimaatio(self, aika))
 
-        
-    def haePelaajanPaikka(self, pelaaja):  #Hakee nimen perusteella pelaajan paikan (0 = bottom, 1 = left, 2 = top, 3 = right)
+    #Hakee nimen perusteella pelaajan paikan (0 = bottom, 1 = left, 2 = top, 3 = right)
+    def haePelaajanPaikka(self, pelaaja):  
         pelaajat = [self.nakyma] + self.nakyma.muutPelaajat
         pelaajaIndex = pelaajat.index(next(p for p in pelaajat if p.nimi == pelaaja))
         return pelaajaIndex
 
 
                         
-
-# ============================================================
-# VALINTAPANEELI, TÄSSÄ TAPAHTUU PELAAJAN VALINNAT
-# ============================================================
-
 class ValintaPaneeli:
+    '''Valintapaneeli on pelaajan keskeinen info-ruutu, jossa pyydetään useimmat pelaajan valinnat sekä johon päivitetään pelitapahtumia'''
 
     def __init__(self, nakyma, kortit_sheet, lisaaKomento):
 
@@ -253,6 +254,7 @@ class ValintaPaneeli:
 
 
     def handle_event(self, event):
+        '''Pygame-eventtien käsittely valintapaneelissa'''
 
         if event.type != pygame.MOUSEBUTTONDOWN:
             return
@@ -319,6 +321,7 @@ class ValintaPaneeli:
 
                 
     def draw(self, surface):
+        '''Valintapaneelin piirtäminen sen mukaan, mikä on valintapaneelin tila'''
 
         rect = pygame.Rect(self.left, self.top, self.width, self.height)
 
@@ -425,7 +428,9 @@ class ValintaPaneeli:
 
 
 
-    def valintaSallittu(self, valinta):  #Lopullisessa versiossa noita None tsekkejä ei pitäisi tarvita
+    def valintaSallittu(self, valinta):  
+        '''Panostusvalinnassa vastaanottaa klikkaukset vain valinnoilta, jotka ovat sallittuja pelitilanteessa'''
+
         nakyma = self.nakyma
 
         if nakyma.maksettavaa is not None and nakyma.pieniKorotus is not None and nakyma.suuriKorotus is not None:
@@ -451,6 +456,8 @@ class ValintaPaneeli:
                     return False
 
     def valintaTeksti(self, valinta):
+        '''Muokkaa panostusvalintojen nappien tekstit, kuten oikeat pelimerkkien määrät'''
+
         nakyma = self.nakyma
         if nakyma.maksettavaa is not None and nakyma.pieniKorotus is not None and nakyma.suuriKorotus is not None:
             if valinta == "maksa":
@@ -469,6 +476,7 @@ class ValintaPaneeli:
                 return "Luovuta"
 
     def piirraShowdown(self, surface):
+        '''Showdown, piirretään kun kierros päättyy ja peli ratkotaan käsikortit paljastamalla.'''
 
         assert self.showdownData is not None, "ShowdownData puuttuu"
 

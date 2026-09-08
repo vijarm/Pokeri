@@ -5,11 +5,16 @@ import socket
 from viestit import Komento, Paivitys
 
 class Transport:
+    '''Transport -olio on vastuussa viestien toimittamisesta enginen ja GUI:n välillä.
+    LocalTransport käytössä silloin, kun peliä pelataan yksin
+    NetworkTransport käytössä moninpelissä'''
 
     def __init__(self):
         self.transport = LocalTransport()
 
     def vaihdaNetworkiksi(self, mode, host=None, port=5000):
+        '''Vaihtaa Transportin NetworkTransportiksi, joka mahdollistaa pelin hostaamisen tai peliin liittymisen verkossa'''
+
         self.transport.close()
         try:
             self.transport = NetworkTransport(mode, host, port)
@@ -20,6 +25,8 @@ class Transport:
             return False, str(e)
 
     def vaihdaLocaliksi(self):
+        '''Vaihtaa Transportin LocalTransportiksi eli yksinpeliin.'''
+
         self.transport.close()
         self.transport = LocalTransport()
 
@@ -48,6 +55,8 @@ class Transport:
         self.transport.close()
 
     def salli_liittyminen(self):
+        '''Sallii uusien pelaajien liittymisen hostina toimivan pelaajan peliin.'''
+
         if isinstance(self.transport, NetworkTransport):
             self.transport.salliLiittyminen = True
             return True, None
@@ -61,12 +70,14 @@ class Transport:
         return False, virhe
 
     def esta_liittyminen(self):
+        '''Estää uusien pelaajien liittymisen hostin peliin.'''
+
         if isinstance(self.transport, NetworkTransport):
             self.transport.salliLiittyminen = False
 
 
-#Local siirtää vain oliot sellaisenaan engine <-> gui, ei tarvita muutoksia väliin
 class LocalTransport:
+    '''Yksinpelissä käytettävä Transport -muoto. Siirtää komennot ja päivitykset sellaisenaan olioina lokaalisti'''
 
     def __init__(self):
         self.to_engine = []
@@ -109,8 +120,8 @@ class LocalTransport:
         self.to_gui.clear()
 
 
-#Nettipeliin tarvittava transportteri
 class NetworkTransport:
+    '''Moninpelissä käytettävä Transport -muoto. Mahdollistaa pelin hostaamisen tai toisen peliin liittymisen verkossa.'''
 
     def __init__(self, mode, host=None, port=5000):
         self.mode = mode
@@ -143,6 +154,7 @@ class NetworkTransport:
     # --------------------------------------------------
 
     def _aloita_host(self):
+        '''Aloittaa hostaamisen, kuuntelee määriteltyyn porttiin tulevia viestejä.'''
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -155,6 +167,8 @@ class NetworkTransport:
         print(f"Host kuuntelee portissa {self.port}")
 
     def _hyvaksy_uudet_clientit(self):
+        '''Jos uusien pelaajien liittyminen on sallittu, niin lisää yhdistävän pelaajan tiedot clients-listaan. Muutoin estää liittymisyrityksen.'''
+
         while True:
             try:
                 client_socket, address = self.socket.accept()
@@ -167,7 +181,7 @@ class NetworkTransport:
                 client_socket.close()
                 continue
 
-            if len(self.clients) >= 1: #Alkuun nyt vaan 1 pelaaja
+            if len(self.clients) >= 3: #Max 3 ihmispelaajaa clienttinä + host. HUOM! Testattu vain yhdellä.
                 print("Peli täynnä, liittymisyritys hylätty:", address)
                 client_socket.close()
                 continue
@@ -184,6 +198,8 @@ class NetworkTransport:
     # --------------------------------------------------
 
     def _aloita_client(self):
+        '''Yrittää yhdistää annetun ip-osoitteen ja portin host-pelaajaan.'''
+
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(5)
 
@@ -199,6 +215,8 @@ class NetworkTransport:
     # --------------------------------------------------
 
     def _serialisoi(self, obj):
+        '''Muuntaa lähetettävät tiedot muotoon, joka on sopiva verkkolähetykseen.
+        Verkon yli siirrettävillä olioilla on erillinen to_dict -metodi serialisoimista varten.'''
 
         if isinstance(obj, (str, int, float, bool)) or obj is None:
             return obj
@@ -225,6 +243,8 @@ class NetworkTransport:
     # --------------------------------------------------
 
     def _deserialisoi(self, data):
+        '''Palauttaa verkosta tulleet tiedot takaisin pelinmoottorin / GUI:n tarvitsemaan muotoon.
+        Olioilla on erillinen from_dict -luokkametodi, joka palauttaa sen alkuperäiseen olio-muotoon.'''
 
         if isinstance(data, list):
             return [self._deserialisoi(x) for x in data]
@@ -314,6 +334,7 @@ class NetworkTransport:
     # --------------------------------------------------
 
     def receive_for_engine(self):
+        '''Engineen tulevien viestien vastaanottaminen, vain host.'''
 
         if self.mode == "host":
             self._hyvaksy_uudet_clientit()
@@ -357,6 +378,8 @@ class NetworkTransport:
     # --------------------------------------------------
 
     def send_to_engine(self, viesti):
+        '''GUI komentojen lähetys enginelle'''
+
         if self.mode == "host":
             # GUI -> Hostin engine on paikallinen
             self.to_engine.append((None, viesti))
@@ -365,8 +388,9 @@ class NetworkTransport:
             # Client GUI -> verkkoon Hostille
             self._laheta(self.socket, viesti)
 
-    #Kaikille pelaajille
     def send_to_all_gui(self, viesti):
+        '''Enginen päivityksien lähettäminen kaikille GUI-pelaajille'''
+
         if self.mode == "host":
 
             # Hostin oma GUI
@@ -386,8 +410,9 @@ class NetworkTransport:
             # Clientin engine -> Clientin oma GUI
             self.to_gui.append(viesti)
 
-    #Yhdelle tietylle clientille
     def send_to_client(self, client, viesti):
+        '''Enginen päivityksen lähettäminen yhdelle tietylle pelaajalle'''
+
         try:
             self._laheta(client, viesti)
         except (BrokenPipeError, ConnectionResetError, OSError):
@@ -401,10 +426,12 @@ class NetworkTransport:
     def send_to_own_gui(self, viesti):
         self.to_gui.append(viesti)
 
+    #Vain omalle enginelle
     def send_to_own_engine(self, viesti):
         self.to_engine.append((None, viesti))
 
     def receive_for_gui(self):
+        '''Engineltä tulevien päivityksien vastaanottaminen GUI:lle.'''
 
         if self.mode == "client":
 
@@ -423,7 +450,8 @@ class NetworkTransport:
         return viestit
 
     def close(self):
-        # Host sulkee kaikki client-yhteydet
+        '''Host sulkee kaikki client-yhteydet'''
+        
         for client in self.clients:
             client.close()
 

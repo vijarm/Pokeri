@@ -25,8 +25,8 @@ BLACK = settings.BLACK
 large_font = settings.large_font
 
 
-# Kortin liikkumisen animaatio
 class KorttiAnimaatio:
+    '''Yleinen kortin liikuttamisen animaatio, jota käytetään apuna muiden animaatioiden toteuttamisessa'''
 
     def __init__(
         self,
@@ -65,6 +65,8 @@ class KorttiAnimaatio:
             self.valmis = True
 
 class Korttijako:
+    '''Animaatio, joka jakaa kortit kaikille pelaajille jaon alussa'''
+
     def __init__(self, pelipoytaGUI):
         self.pelipoytaGUI = pelipoytaGUI
         self.animaatiot = []
@@ -102,6 +104,8 @@ class Korttijako:
 
 
 class FoldAnimaatio:
+    '''Animaatio, jossa pelaaja heittää korttinsa pöydälle luovuttaessaan käden.'''
+
     def __init__(self, pelipoytaGUI, pelaaja):
         self.pelipoytaGUI = pelipoytaGUI
         self.animaatiot = []
@@ -138,6 +142,7 @@ class FoldAnimaatio:
 
     
 class PelaajaIlmoitus:
+    '''Staattinen ns. animaatio, jossa pelaaja ilmoittaa puhekuplalla pelitilanteen muutoksesta'''
 
     def __init__(self, pelipoytaGUI, pelaaja, ilmoitus):  #pelaaja lähetetään valmiina indeksinä
         self.pelipoytaGUI = pelipoytaGUI
@@ -161,6 +166,7 @@ class PelaajaIlmoitus:
         draw_centered_text(self.pelipoytaGUI.screen, self.ilmoitus, PUHEKUPLAT[self.pelaaja][2], large_font, BLACK)
 
 class OdotusAnimaatio:
+    '''Ns. tyhjä animaatio, jolla voidaan luoda viivettä GUI:n muutoksiin, koska päivityksiä otetaan jonosta käsittelyyn vasta kun animaatiot ovat käsitelty loppuun'''
 
     def __init__(self, pelipoytaGUI, aika):
         self.aika = aika
@@ -178,6 +184,7 @@ class OdotusAnimaatio:
         pass
 
 class VaihtoAnimaatio:
+    '''Animaatio korttien vaihdon yhteydessä, heittää vanhat kortit pois ja nostaa uudet kortit pakasta.'''
 
     def __init__(self, pelipoytaGUI, pelaaja, indeksit):
         self.pelipoytaGUI = pelipoytaGUI

@@ -5,6 +5,10 @@ from Pistelasku import haeVoittaja
 from random import randint
 
 class Pelipoyta:
+    '''Pelipoyta on käynnissä olevan pelin uloin tilakone. Seuraa pelin kulkua läpi jakojen,
+    aloittaa ja lopettaa yksittäiset jaot, ja lopettaa koko pelin jos pelaajia on jäljellä enää yksi.
+    Jos peliä pelataan simulointi-modella, kerää tilastoja simulointi-olion tietoihin.'''
+
     def __init__(self, pelaajat: list, paivitys_to_gui=None, simulointi=None):
         self.PerusPakka = Pakka()
         self.PerusPakka.luo_pakka()
@@ -31,6 +35,7 @@ class Pelipoyta:
     
 
     def paivitaTila(self):
+        '''Pelipöydän tilan päivitys, aloittaa ja lopettaa jaot, sekä päättää koko pelin jos pelaajia on jäljellä vain 1.'''
 
         if sum(p.aktiivinen for p in self.pelaajat) == 1:
             self.voittaja = next(p for p in self.pelaajat if p.aktiivinen)
@@ -49,40 +54,11 @@ class Pelipoyta:
 
         self.kasitteleJakoTulos()
 
-    '''
-    def autoPeli(self) -> Pelaaja:
-        self.kierros = 0
-        while True:
-            self.kierros += 1
-            self.uusiAutoKierros()
-            self.lopetaKierros()
-
-            if sum(p.aktiivinen for p in self.pelaajat) == 1:
-                self.julistaVoittaja(next(p for p in self.pelaajat if p.aktiivinen))
-                break
-        print("Peli päättyi, jakoja voittajan löytämiseen tarvittiin", self.kierros)
-        return next(p for p in self.pelaajat if p.aktiivinen)
-
-        
-    def testiPeli(self):
-        self.paivitaNakymat()
-        self.kierros = 0
-        while True:  # TÄÄ MUUTTUU 
-            self.kierros += 1
-            self.uusiKierros()
-            self.lopetaKierros()  #nollaa tiedot
-                        
-            if sum(p.aktiivinen for p in self.pelaajat) == 1:
-                self.julistaVoittaja(next(p for p in self.pelaajat if p.aktiivinen))
-                break
-            self.paivitaNakymat()
-        print("Peli päättyi, jakoja voittajan löytämiseen tarvittiin", self.kierros)
-    '''
-                     
-
+                   
     def uusiKierros(self): 
+        '''Aloittaa uuden kierroksen. Lähettää uuteen jakoon pelaajat, jotka ovat vielä pelissä mukana.'''
         aktiiviset = [p for p in self.pelaajat if p.aktiivinen and p.chips > 0]  #Vain aktiiviset pelaa, lisävarmistus chips > 0
-        if len(aktiiviset) < 2: pass ##### TÄHÄN JOKU self.tila = valmis jos, peli on loppu. Pitäis kyllä tulla muualla.
+        if len(aktiiviset) < 2: pass #Tämän ei pitäisi toteutua, muuta assert?
 
         self.kierros += 1
         self.paivitaJakaja()
@@ -92,6 +68,9 @@ class Pelipoyta:
 
 
     def kasitteleJakoTulos(self):
+        '''Käsittelee Jako-oliolta muodostuneen tuloksen. Jakaa potissa olevat chipsit pelaajille niiden oikeuttaman osuuden mukaisesti,
+        kerää statistiikkaa jos simulointi-mode on päällä, ja suorittaa koneoppivan AI:n palkintojen jaon, jos AI on koulutuksessa.'''
+
         assert self.jako is not None
         tulos = self.jako.tulos
         assert isinstance(tulos, list)
@@ -148,29 +127,10 @@ class Pelipoyta:
         self.paivitaGUI("pelipoyta", {"tapahtuma": "pottiJaettu"})  #Tällä ei ole mitään vastatapahtumaa, halutaanko joku yhteisveto tilanteesta?
         self.jako = None
 
-    '''
-    def uusiAutoKierros(self): #Tätä muokataan yo. mukana TAI laitetaan muuttuja auto = 1, jonka perusteella pari asiaa muuttuu
-        aktiiviset = [p for p in self.pelaajat if p.aktiivinen and p.chips > 0]  #Vain aktiiviset pelaa, lisävarmistus chips > 0
-        if len(aktiiviset) < 2: return
-
-        self.paivitaJakaja()
-        self.paivitaPanos()
-
-        self.jako = Jako(self)  
-        #tulos = self.jako.pelaaKierros()  #Tää on se vanha looppi ja osa funktioista on muuttunut
-        tulos = []
-
-        print("TULOS: ", tulos)
-
-        for x in range(len(tulos)):
-            for y in range(len(tulos[x][0])):
-                tulos[x][0][y]["pelaaja"].chips += (tulos[x][1] // len(tulos[x][0]))
-        
-        for i in self.pelaajat:
-            print(i.nimi, i.chips)
-    '''
 
     def lopetaKierros(self): 
+        '''Lopettaa viimeisen jaon, nollaa pelaajat ja pakan, ja tiputtaa pois pelaajat, joiden pelimerkit ovat loppuneet.'''
+
         for pelaaja in self.pelaajat:
             pelaaja.nollaaKierros()
             if pelaaja.aktiivinen:
@@ -179,17 +139,21 @@ class Pelipoyta:
                     self.paivitaNakymat()
                     self.loggaa(f"{pelaaja.nimi} tippui pelistä!")
                     self.paivitaGUI("pelipoyta", {"tapahtuma": "pelaajaTippui", "pelaaja": pelaaja.nimi, "ilmoitus": [f"{pelaaja.nimi} tippui pelistä!"]})
+
         self.pelipakka.kortit.clear()
-        #discardpile, mihin tulee ja tarvitaanko miten?
         self.pelipakka.kortit = self.PerusPakka.kortit.copy()
 
     def julistaVoittaja(self, voittaja: Pelaaja):
+        '''Ilmoittaa GUI:lle kun koko pelin voittaja on löytynyt.'''
+
         self.paivitaNakymat()
         self.loggaa(f"{voittaja.nimi} voitti koko pelin!")
         self.paivitaGUI("pelipoyta", {"tapahtuma": "voittajaLoytyi", "pelaaja": voittaja.nimi, "ilmoitus": ["Peli on päättynyt!", f"Pelin on voittanut {voittaja.nimi}!"]})
         #print("TÖTTÖRÖÖ, VOITTAJA ON ", voittaja.nimi, "JA PEITTOSI MUUT KERÄÄMÄLLÄ", voittaja.chips, "CHIPPIÄ!")
 
     def paivitaJakaja(self): 
+        '''Päivittää jakajan vuoron oikein vuorojärjestyksessä.'''
+
         while True:
             self.jakovuoro += 1
             if self.pelaajat[self.jakovuoro % len(self.pelaajat)].aktiivinen == False:
@@ -199,6 +163,8 @@ class Pelipoyta:
                 break
 
     def paivitaPanos(self):
+        '''Päivittää panosta joka 4. kierros, panos kasvaa voimakkaammin pelin edetessä.'''
+
         if self.kierros < 13:  #kierrokset 1-12, +50 joka 4. kierros
             self.panos = 100 + (50 * ((self.kierros - 1) // 4))
         elif (self.kierros - 1) % 4 == 0:
@@ -210,19 +176,26 @@ class Pelipoyta:
                 self.panos += 200 #väliin jäävillä 21 ja 25 +200
 
     def loggaa(self, teksti: str):
+        '''Lisää logiin tiedon pelitapahtumasta.'''
+
         if self.simulointi is None:
             self.log.append(teksti)
 
 
-    def paivitaNakymat(self):  #Päivitetään näkymä, jota käytetään GUI:ssa ja jolla rajataan mitä kukakin näkee
+    def paivitaNakymat(self):  
+        '''Luo jokaiselle pelaajalle uuden päivitetyn PelaajaNakyma -olion'''
+
         for pelaaja in self.pelaajat:
             pelaaja.nakyma = PelaajaNakyma(pelaaja, self)
             #print("Ovat samoja:", pelaaja.nakyma.to_dict() == PelaajaNakyma.from_dict(pelaaja.nakyma.to_dict()).to_dict())
             
 
     def paivitaGUI(self, tyyppi, tiedot):  
+        '''Luo GUI:lle lähetettävän päivityksen uudesta pelitilanteesta / -tapahtumasta'''
+
         if self.simulointi is None:
             for pelaaja in self.pelaajat:
                 if pelaaja.ai is None:
+                    assert self.paivitys_to_gui is not None, "GUI päivitys tarvitsee paivitys_to_gui funktion"
                     self.paivitys_to_gui(pelaaja, tyyppi, tiedot, pelaaja.nakyma)
 

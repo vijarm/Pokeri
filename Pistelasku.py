@@ -1,21 +1,20 @@
-# Lasketaan käsille vertailukelpoiset arvot sekä luokitellaan vahvinkoreihin tietokonepelaajaa varten
-# Palauttaa tuplessa vertailukelpoisen arvon, jossa ensimmäinen numero käden perusarvo (alla) ja sen jälkeen tasapelitilanteessa tarvittavat arvot vertailukelpoisessa järjestyksessä
-# Käsien rankit:
-# 0 - Hai
-# 1 - Pari
-# 2 - Kaksi paria
-# 3 - Kolmoset
-# 4 - Suora
-# 5 - Väri
-# 6 - Täyskäsi
-# 7 - Neloset
-# 8 - Värisuora
-#
-# Palautetaan muodossa {"kasinimi": str, "vahvuus": tuple, "voittoArvio": tuple, "vaihtosuositus": list}
-
 from collections import Counter
 
 def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
+    '''Saa parametrikseen käsikortit -listan, josta tarkistetaan kyseisen käden pokerikäden vahvuus. 
+    Vahvuus on vertailukelpoinen tuple, jossa ensimmäinen luku kuvaa kättä (esim. pari, kolmoset)
+    ja seuraavat luvut muita tarkentavia tietoja (esim. mikä pari, ja seuraavaksi muut kortit suuruusjärjestyksessä).
+    Näin yksinkertaisella suurempi kuin -vertailulla voidaan hakea paras käsi. 
+    Lisäksi jos vaihtoja -parametri on True, lisätään suositukset korteista, joita kädestä voi olla järkevä vaihtaa.
+    Lisäksi käsillä on vielä tarkempi 18-portainen luokittelu sekä voimaluku 0-100, joka lisätään analyysiin.
+    
+    Palauttaa:
+    "kasinimi": Käden nimi (string)
+    "vahvuus": Vertailukelpoinen tuple käden arvosta
+    "voittoArvio": Tuple, ensimmäinen luku käden rank 0-17, toinen luku käden "voimaluku" 0-100
+    "vaihtosuositus": Lista, jokainen alkio on yksi suositus vaihdettavista korteista
+    '''
+
     maat_counter = Counter(kortti.maa for kortti in kasikortit)
     numero_counter = Counter(kortti.numero for kortti in kasikortit)
     numero_arvot = sorted(numero_counter.values())
@@ -27,8 +26,7 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
     voittoArvio = None
     vaihtosuositus = []  #lista listoista: voi olla useampia eri usean kortin vaihtosuosituksia
 
-# TÄSTÄ VOISI SIIRTÄÄ SUORAN JA VÄRIN TARKISTUKSEN SEN TAAKSE,
-# ETTÄ ONKO KÄSI MUOTOA 1,1,1,1,1. Ei jaksa nyt. Koska etenkin suora tekee useemman toimen, ja on harvinainen.
+# Tätä voisi saada optimoitua muuttamalla järjestystä, jossa vertailua tehdään - nyt edetään periaatteessa harvinaisimmasta yleisimpään
 
     #Värin tarkistus
     if len(maat_counter) == 1:
@@ -247,9 +245,11 @@ def laskeArvot(kasikortit: list, vaihtoja = False) -> dict:
             "vaihtosuositus": vaihtosuositus
             }
 
-#Palauttaa listana kortin, jonka voi lisätä vaihtosuositus -listaan
-#Haetaan vain päädyt auki olevan suoran mahdollisuutta, ei keskeltä avointa
+
 def suoraPaadytAuki(numerolista: list, kasikortit: list) -> list | None:  
+    '''Tarkistaa onko kädessä suoran haku ns. päädyt auki, eli neljä peräkkäistä korttia.
+    Jos on, palauttaa vaihtosuosituksena eli listana sen kortin, joka ei kuulu neljän peräkkäisen kortin ryhmään.'''
+
     jarjestetty = sorted(numerolista)
     
     if all(jarjestetty[i] + 1 == jarjestetty[i+1] for i in range(0,3)):
@@ -262,30 +262,35 @@ def suoraPaadytAuki(numerolista: list, kasikortit: list) -> list | None:
         return None
 
     
-
 def haeVoittaja(pelaajat: list) -> list:
-    tulos = []
+    '''Saa parametrina listan pelaajista. Vertaa kyseisten pelaajien käsikortit laskeArvot -funktiolla,
+    ja palauttaa dict:nä tiedot voittokädestä sekä voittaneesta pelaajasta. 
+    Voittaja palautetaan listana, koska tasapelitilanteessa voittajia on useampi.'''
+
     voittaja = []
     for pelaaja in pelaajat:
         pisteet = laskeArvot(pelaaja.kasikortit)
-        pisteet["pelaaja"] = pelaaja
-        tulos.append(pisteet)
+        pisteet["pelaaja"] = pelaaja  #Lisää tietoihin vielä Pelaaja -olion tiedon.
         if len(voittaja) == 0 or voittaja[0]["vahvuus"] == pisteet["vahvuus"]: 
             voittaja.append(pisteet)
         else: 
             if voittaja[0]["vahvuus"] < pisteet["vahvuus"]:
                 voittaja = [pisteet]
-    tulos.sort(key=lambda p: p["vahvuus"], reverse=True)
 
     #if len(voittaja) == 1:
         #print ("VOITTAJA!!! Pelin voitti", voittaja[0]["pelaaja"], "kädessään", voittaja[0]["kasinimi"])
     #else:
-        #print ("OHHHHOHHHHHHHHH TASAPELI!!! KATSOS:", voittaja)
+        #print ("TASAPELI!!! Voittajat:", voittaja)
     
     return voittaja  #Tämä palautettava muoto ei nyt ehkä ole selkein... 
 
+
+
 # Voimaluvut: (tunnus, vertailussa käytettävä vahvuusluku)
 # Kun vahvuus >= 13, niin voittotodennäköisyys > 90
+# Testattiin myös luvun neliöintiä, mutta nyt käytössä tavallinen muoto
+# Voimaluvut on alunperin johdettu keräämällä statistiikkaa sadoista tuhansista pelatuista käsistä
+
 VOIMALUVUT_NELIO = [
     (0, 0),    # Hai pieni
     (1, 0),    # Hai 9-12
@@ -327,3 +332,16 @@ VOIMALUVUT = [
     (16, 99),  # Neloset
     (17, 100)  # Värisuora
 ]
+
+
+# Käsien rankit:
+# 0 - Hai
+# 1 - Pari
+# 2 - Kaksi paria
+# 3 - Kolmoset
+# 4 - Suora
+# 5 - Väri
+# 6 - Täyskäsi
+# 7 - Neloset
+# 8 - Värisuora
+#

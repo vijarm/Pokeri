@@ -5,6 +5,10 @@ from Pelipoyta import Pelipoyta
 from Jako import Jako
 from Panostus import PanostusKierros
 
+'''Yleisiä datan keräämiseen soveltuvia funktioita, jotka eivät ole käytössä GUI:n kautta, 
+mutta jotka on säilytetty mahdollista tulevaisuuden tarvetta varten'''
+
+
 #Kerää datan siitä, mitkä käsiluokat voittavat ja häviävät minkäkin verran, ja laskee keskimääräiset voimaluokat.
 def tilastoiKadet(kierrosmaara: int, pelaajamaara: int, aiclass: str) -> list:  
 

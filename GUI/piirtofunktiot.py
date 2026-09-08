@@ -118,9 +118,34 @@ very_large_font = settings.very_large_font
 title_font = settings.title_font
 
 
+
+# Piirtämisen apufunktiot
+
+def draw_text(surface, text, position, font_object=font, color=WHITE):
+
+    rendered = font_object.render(str(text), True, color)
+    surface.blit(rendered, position)
+
+
+def draw_centered_text(surface, text, center, font_object=font, color=WHITE):
+
+    rendered = font_object.render(str(text), True, color)
+    rect = rendered.get_rect(center=center)
+    surface.blit(rendered, rect)
+
+
+def draw_panel(surface, rect, border_color=LIGHT_GRAY, border_width=2):
+
+    pygame.draw.rect(surface, PANEL_COLOR, rect, border_radius=8)
+
+    pygame.draw.rect(surface, border_color, rect, width=border_width, border_radius=8)
+
+
 # Pelipoydan perusrakenteen piirtäminen
 
 def piirra_pelipoyta(gui_pelipoyta):
+    '''Piirtää pelipöydän yleisnäkymän'''
+
     draw_top_bar(gui_pelipoyta)
 
     draw_bottom_player(gui_pelipoyta)
@@ -136,7 +161,9 @@ def piirra_pelipoyta(gui_pelipoyta):
     draw_center_area(gui_pelipoyta)
 
 
-def get_kortin_paikka(gui_pelipoyta, pelaaja, index):  #palauttaa ((sijainti x, sijainti y), rotaatio)
+def get_kortin_paikka(gui_pelipoyta, pelaaja, index): 
+    '''Hakee kortin sijainnin pelaajan ja käsikortin indeksin perusteella.
+    Palauttaa sijainnin (x, y) sekä kortin rotaation'''
 
     nakyma = gui_pelipoyta.nakyma
     if pelaaja == nakyma:  #oma pelaaja
@@ -166,6 +193,8 @@ def get_kortin_paikka(gui_pelipoyta, pelaaja, index):  #palauttaa ((sijainti x, 
 
 
 def draw_top_player(gui_pelipoyta):
+    '''Piirtää ruudun ylälaidalla olevan pelaajan'''
+
     surface = gui_pelipoyta.screen
     pelaaja = gui_pelipoyta.nakyma.muutPelaajat[1]
     kortit_sheet = gui_pelipoyta.kortit_sheet
@@ -188,6 +217,8 @@ def draw_top_player(gui_pelipoyta):
 
 
 def draw_side_player(gui_pelipoyta, side):
+    '''Piirtää ruudun sivuilla olevat pelaajat.
+    side: "left" = vasen, "right" = oikea '''
 
     surface = gui_pelipoyta.screen
     nakyma = gui_pelipoyta.nakyma
@@ -220,7 +251,8 @@ def draw_side_player(gui_pelipoyta, side):
 
             draw_card(surface, card, sijainti, CARD_WIDTH, CARD_HEIGHT, kortit_sheet, rotation=rotation)
 
-def draw_bottom_player(gui_pelipoyta):  #Oma pelaaja
+def draw_bottom_player(gui_pelipoyta):  
+    '''Piirtää ruudun alalaidassa olevan pelaajan, eli ihmispelaajan oman pelaajan.'''
 
     surface = gui_pelipoyta.screen
     pelaaja = gui_pelipoyta.nakyma
@@ -251,6 +283,7 @@ def draw_bottom_player(gui_pelipoyta):  #Oma pelaaja
 
 #Keskialue, logi ym muut lisätietoikkunat
 def draw_center_area(gui_pelipoyta):
+    '''Piirtää pelipöydän keskiosan, sisältäen mm. pakan, potin tiedot, logi-ruudun'''
     surface = gui_pelipoyta.screen
     nakyma = gui_pelipoyta.nakyma
     kortit_sheet = gui_pelipoyta.kortit_sheet
@@ -300,6 +333,8 @@ def draw_center_area(gui_pelipoyta):
 
 #Yläpalkki, vähemmän relevanttia infoa
 def draw_top_bar(gui_pelipoyta):
+    '''Piirtää ruudun yläosassa olevan paneelin perustietoineen'''
+
     surface = gui_pelipoyta.screen
     nakyma = gui_pelipoyta.nakyma
 
@@ -333,31 +368,10 @@ def draw_top_bar(gui_pelipoyta):
 
 
 
-# Piirtämisen apufunktiot
-
-def draw_text(surface, text, position, font_object=font, color=WHITE):
-
-    rendered = font_object.render(str(text), True, color)
-    surface.blit(rendered, position)
-
-
-def draw_centered_text(surface, text, center, font_object=font, color=WHITE):
-
-    rendered = font_object.render(str(text), True, color)
-    rect = rendered.get_rect(center=center)
-    surface.blit(rendered, rect)
-
-
-def draw_panel(surface, rect, border_color=LIGHT_GRAY, border_width=2):
-
-    pygame.draw.rect(surface, PANEL_COLOR, rect, border_radius=8)
-
-    pygame.draw.rect(surface, border_color, rect, width=border_width, border_radius=8)
-
-
 #Pelaajapaneeli
 
 def draw_player_panel(surface, pelaaja, rect):
+    '''Piirtää pelaajalle inforuudun, jossa mm. tieto viimeisimmistä valinnoista, pelimerkkien määrästä, onko all-in ym.'''
 
     if pelaaja.allin:
         border_color = TURKOOSI
@@ -409,6 +423,9 @@ def draw_player_panel(surface, pelaaja, rect):
 
 
 def create_card_surface(kortti, width, height, kortit_sheet, selected=False):
+    '''Kortin pinnan piirtäminen.'''
+
+    
     kortin_kuva = get_kortin_kuva(kortti, kortit_sheet)
     
     card_surface = pygame.Surface( (width, height), pygame.SRCALPHA)
@@ -434,6 +451,8 @@ def create_card_surface(kortti, width, height, kortit_sheet, selected=False):
 
 
 def draw_card(surface, kortti, center, width, height, kortit_sheet, rotation=0, selected=False):
+    '''Kortin piirtäminen'''
+
     if kortti is not None:
         card_surface = create_card_surface(kortti, width, height, kortit_sheet, selected)
 
@@ -448,6 +467,8 @@ def draw_card(surface, kortti, center, width, height, kortit_sheet, rotation=0, 
 
 
 def get_kortin_kuva(kortti, kortit_sheet, tausta=2):  
+    '''Hakee kortin kuvan kortit_sheet tiedostosta. Leikkaa oikean kortin kuvan perustuen maahan ja kortin numeroon.
+    Kortin tausta kovakoodattu, vaihtoehtoina 2, 3, 4, 5 ja 14 (koska sarake 1 = ässä = haussa numero 14)'''
 
     if kortti == "alaspain" or kortti.alaspain == True:  #Väärinpäin olevat kortit
         y = MAA_RIVIT["muu"] * CARD_HEIGHT

@@ -37,6 +37,7 @@ jatti_font = settings.jatti_font
 
 
 class GUI_valikko:
+    '''Pelin päävalikon GUI. Pelien aloittaminen, online-peliin liittyminen, simulointipelit.'''
 
     def __init__(self, screen, pelaaja, kortit_sheet, lisaaKomento):
         self.screen = screen
@@ -59,6 +60,8 @@ class GUI_valikko:
         for i, tiedot in enumerate(MAIN_NAPIT):
             self.mainNapit.append(Nappi(500, 270+(i*80), 280, 60, tiedot[0], tiedot[1], LIGHT_GRAY, font=large_font))
 
+        self.mainNapit[3].enabled = False  #Asetuksissa ei tällä hetkellä ole mitään, piilotetaan nappi
+
         self.pelaajavalintaNapit = [ [], [], [], [] ]
         for i in range(4):
             self.pelaajavalintaNapit[i].append(Nappi(WIDTH-430, 145+(i*115), 100, 50, "lisaa", "LISÄÄ", LIGHT_BLUE, BLACK))
@@ -80,6 +83,8 @@ class GUI_valikko:
 
 
     def handle_paivitys(self, paivitys):
+        '''Engineltä tulevien päivityksen käsittely silloin, kun GUI on valikko-modessa'''
+
         if paivitys.tyyppi == "uusipelaajalista":
             self.pelaajat = paivitys.tiedot["pelaajat"]
             return
@@ -130,9 +135,10 @@ class GUI_valikko:
             self.muokkaus_popup = IlmoitusPopup(self.screen, f"Pelaaja {paivitys.tiedot['pelaaja']} poistui!", GRAY)
 
 
-
     def handle_event(self, event):
+        '''Pygame -eventtien käsittely silloin, kun GUI on valikko-modessa'''
 
+        #Jos pop-up on auki, se käsitellään aina ensimmäisenä, eivätkä muut taustanapit reagoi.
         if self.muokkaus_popup:
             self.muokkaus_popup.handle_event(event)
             if self.muokkaus_popup.suljetaan:
@@ -197,6 +203,7 @@ class GUI_valikko:
 
 
     def handle_nappi(self, valinta, pelaajaindeksi=None):
+        '''Käsittelee eri nappien painallukset'''
 
         if self.mode == "main":
             if valinta == "poistu":
@@ -275,16 +282,15 @@ class GUI_valikko:
                 return
 
 
-
-    def get_valinta(self):
-        pass
-
     def paivita(self):
+        '''Päivittää (tositaiseksi vain) aktiiviset napit eri menuihin'''
+
         if self.mode == "pelaajavalinta" or self.mode == "simuloi":
             self.paivitaValintaNapit()
     
     
     def draw(self): 
+        '''Valikon piirtofunktio, piirretään mode sen mukaan mikä mode on voimassa.'''
         
         pygame.display.set_caption(
             "POKERISIMULAATTORI"
@@ -309,6 +315,8 @@ class GUI_valikko:
 
 
     def paivitaValintaNapit(self):
+        '''Päivittää käytössä olevat napit näkyviin ja piilottaa tarpeettomat'''
+
         pelaajat = self.pelaajat if self.mode != "simuloi" else self.simulointiPelaajat
 
         for i, napit in enumerate(self.pelaajavalintaNapit):
@@ -348,6 +356,8 @@ class GUI_valikko:
 
 
 def draw_main_menu(gui_valikko):
+    '''Päävalikon piirtäminen'''
+
     screen = gui_valikko.screen
     draw_centered_text(screen, "POKERISIMULAATTORI", (640, 130), jatti_font, BLACK)
 
@@ -360,6 +370,9 @@ def draw_main_menu(gui_valikko):
 
 
 def draw_pelaajavalinta(gui_valikko, simulointi=False):
+    '''Pelaajavalinta -sivujen piirtäminen niin peruspelissä kuin simuloinnissa'''
+    #Nämä modet olisi kannattanut erotella ehkä paremmin, mutta toimii tämäkin.
+
     screen = gui_valikko.screen
     pelaajat = gui_valikko.pelaajat if simulointi == False else gui_valikko.simulointiPelaajat
 
@@ -391,8 +404,6 @@ def draw_pelaajavalinta(gui_valikko, simulointi=False):
             if simulointi == True:
                 continue
             else:
-                #if gui_valikko.salliLiittyminen == True:  Nää tarkastetaan jo muualla? 
-                #    continue
                 nappi.draw(screen)
 
         nappi.draw(screen)
@@ -401,13 +412,14 @@ def draw_pelaajavalinta(gui_valikko, simulointi=False):
         draw_centered_text(screen, "PELIEN MÄÄRÄ:", (WIDTH//2 - 300, HEIGHT - 140), large_font, WHITE)
         gui_valikko.simulointi_pelit.draw(screen)
 
-
+    #Popup piirretään aina viimeisenä = päällimmäisenä
     if gui_valikko.muokkaus_popup:
         gui_valikko.muokkaus_popup.draw()
 
 
 
 def draw_korttiviuhka(gui_valikko, kortit, x, y):
+    '''Korttiviuhka, main menun koriste.'''
     screen = gui_valikko.screen
     draw_card(screen, kortit[0], (x - 60, y), CARD_WIDTH, CARD_HEIGHT, gui_valikko.kortit_sheet, 40)
     draw_card(screen, kortit[1], (x - 30, y - 25), CARD_WIDTH, CARD_HEIGHT, gui_valikko.kortit_sheet, 20)
@@ -417,6 +429,8 @@ def draw_korttiviuhka(gui_valikko, kortit, x, y):
 
 
 class LiityOnline:
+    '''Online -peliin liittymisen valikko ja valinnat'''
+
     def __init__(self, gui_valikko):
         self.screen = gui_valikko.screen
         self.gui_valikko = gui_valikko
@@ -438,6 +452,7 @@ class LiityOnline:
         self.ipboksi = Tekstiboksi( (WIDTH // 2 - 110, 430, 260, 45), "127.0.0.1", max_length=30)
 
     def resetoi(self):
+        '''Resetoi online-valinnat'''
         self.popup = None
         self.ip = ""
         self.connected = False
@@ -445,8 +460,10 @@ class LiityOnline:
         self.tila = "liity_valikko"
 
     def draw(self):
+        '''Liity Online -valikon piirtäminen'''
         screen = self.screen
 
+        #Ennen yhdistämisyritystä
         if self.tila == "liity_valikko":
 
             draw_centered_text(screen, "LIITY NETTIPELIIN", (WIDTH // 2, 60), pygame.font.SysFont("arial black", 48), BLACK)
@@ -466,6 +483,7 @@ class LiityOnline:
             for nappi in self.napit:
                 nappi.draw(self.screen)
 
+        #Kun klikattu liittymistä
         elif self.tila == "odottaa_pelia":
 
             self.screen.fill(TABLE_DARK)
@@ -492,13 +510,14 @@ class LiityOnline:
             for nappi in self.napit:
                 nappi.draw(self.screen)
 
-
+        #Pop-up päällimmäiseksi
         if self.popup:
             self.popup.draw()
 
 
     def handle_event(self, event):
 
+        #Pop-up käsitellään aina ensimmäisenä
         if self.popup:
             self.popup.handle_event(event)
             if self.popup.suljetaan == True:
@@ -513,8 +532,8 @@ class LiityOnline:
             self.ipboksi.handle_event(event)
             return
 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            self.nimiboksi.active = self.nimiboksi.rect.collidepoint(event.pos) #Tekstiboksi aktiivinen tai epäaktiivinen onko klikattu vai ei
+        if event.type == pygame.MOUSEBUTTONDOWN: #Tekstiboksi aktiivinen tai epäaktiivinen sen mukaan, onko klikattu sen kohdalle vai muualle
+            self.nimiboksi.active = self.nimiboksi.rect.collidepoint(event.pos) 
             self.ipboksi.active = self.ipboksi.rect.collidepoint(event.pos)
 
         for nappi in self.napit:
@@ -557,6 +576,8 @@ class LiityOnline:
 
 
 class Muokkaus_popup:
+    '''Pop-up, joka aukeaa, kun pelaaja-valikossa joko halutaan lisätä uusi pelaaja tai muokata pelaajan tietoja.'''
+
     def __init__(self, gui_valikko, pelaaja, indeksi, simulointi = False):
         self.screen = gui_valikko.screen
         self.pelaajat = gui_valikko.pelaajat if simulointi == False else gui_valikko.simulointiPelaajat
@@ -580,7 +601,6 @@ class Muokkaus_popup:
             self.oma_pelaaja = True
             self.nimi = pelaaja.nimi
             self.tyyppi = pelaaja.tyyppi
-
 
         elif pelaaja is not None:
             self.nimi = pelaaja.nimi
@@ -707,6 +727,8 @@ class Muokkaus_popup:
 
 
 class Simulointi:
+    '''Simulointi -sivu, aktivoituu kun simulointi-pelaajat on valittu ja painettu simuloinnin aloittamista.
+    Esittää simuloinnin edistymistä, ja simuloinnin valmistuttua näyttää sen tulokset.'''
 
     def __init__(self, gui_valikko):
         self.screen = gui_valikko.screen
@@ -813,7 +835,7 @@ class Simulointi:
 
     def handle_nappi(self, nappi):
 
-        if nappi == "peru_simulointi":  #Tää muutetaan niin että tulee keskeneräiset tulokset.
+        if nappi == "peru_simulointi":  #Keskeytettyyn simulointiin engine palauttaa tiedot siihen asti simuloiduista peleistä.
             self.gui_valikko.lisaaKomento("peru_simulointi", None)
 
         elif nappi =="palaa_menuun":
@@ -827,6 +849,7 @@ class Simulointi:
 
 
 class IlmoitusPopup:
+    '''Ilmoitus pop-up, voidaan käyttää yleisluonteisiin ilmoituksiin, jotka pelaaja kuittaa painamalla ilmoituksen OK-nappia'''
     def __init__(self, screen, teksti, vari=RED):
         self.screen = screen
         self.teksti = teksti
@@ -852,6 +875,8 @@ class IlmoitusPopup:
 
 
 class Nappi:
+    '''Nappi -komponentti, jolla voidaan luoda halutun kokoinen nappi halutulla nimellä ja tekstillä. Enabled mahdollistaa aktivoinnin/deaktivoinnin'''
+
     def __init__(self, x, y, leveys, korkeus, nimi, teksti, vari, kehys=None, tekstivari=BLACK, font=medium_font):
         self.rect = pygame.Rect(x, y, leveys, korkeus)
         self.nimi = nimi
@@ -877,6 +902,8 @@ class Nappi:
         return self.rect.collidepoint(pos)
 
 class Tekstiboksi:
+    '''Tekstiboksi -komponentti, johon voidaan ottaa käyttäjän syöte merkkeinä, ja get() -funktiolla hakea boksissa oleva syöte'''
+
     def __init__(self, rect, teksti="", max_length=16):
         self.rect = pygame.Rect(rect)
         self.teksti = teksti
@@ -917,6 +944,8 @@ class Tekstiboksi:
         return self.teksti
 
 class RullaavaValinta:
+    '''Valintalaatikko, jossa sivuilla nuolet, ja kierrättää vaihtoehdot -listan alkioita valintavaihtoehtoina.
+    get() funktiolla saadaan haettua voimassa oleva valinta.'''
 
     def __init__(self, vaihtoehdot, rect, font=large_font):
         self.vaihtoehdot = vaihtoehdot
@@ -974,6 +1003,8 @@ class RullaavaValinta:
 
 
 def arvoNimi():
+    '''Arpoo kaksiosaisen nimen pelaajalle'''
+    
     etuosa = sample(etunimet, 1)
     takaosa = sample(takanimet, 1)
     return f"{etuosa[0]}-{takaosa[0]}"

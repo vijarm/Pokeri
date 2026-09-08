@@ -6,6 +6,9 @@ import os
 
 
 class AI:
+    '''AI yleisluokka, funktioiden toteutus määritellään perityissä luokissa. 
+    Saa parametreikseen pelaajan, jolle AI luodaan, sekä asetukset AI:n tarkemmasta tyypistä'''
+
     def __init__(self, pelaaja, asetukset: dict | None = None):  #aggro 1-3? type default / high hand / high card / safe?
         self.pelaaja = pelaaja
 
@@ -34,7 +37,9 @@ class AI:
         self.vaihdetaan = None
         self.arvioituVoimakkuus = None
 
-    def muokkaaPainotuksia(self, painot: list, kierros=1) -> list:  # Kaikille AI:lle yhteinen funktio, jolla muokataan panostuksen valintapainoja pelitilanteen mukaan.
+    def muokkaaPainotuksia(self, painot: list, kierros=1) -> list:  
+        '''Useimmilla AI:lla käytössä oleva funktio, jolla muokataan panostuksen valintapainoja pelitilanteen mukaan sääntöpohjaisesti.'''
+
         uudetPainot = painot
         maksettavaa = self.pelaaja.nakyma.suurinKorotus - self.pelaaja.nakyma.maksettuPanostukseen
         pieniKorotus = min(self.pelaaja.nakyma.panos, self.pelaaja.nakyma.chips - maksettavaa)
@@ -80,13 +85,17 @@ class AI:
         #print("Maksettavaa:", maksettavaa, "|| Käsikortit:", self.pelaaja.nakyma.kasikortit, "|| Potti:", self.pelaaja.nakyma.potti)
         #print("Chips:", self.pelaaja.nakyma.chips, "|| Pieni raise:", pieniKorotus, "|| Suuri raise:", suuriKorotus)
 
-
         return uudetPainot
 
 
 
 class randomAI(AI):
+    '''Satunnainen AI-pelaaja. Ei täysin satunnainen, käyttää mm. ennalta määriteltyjä baseline -painoja, mutta sisältää
+    muita enemmän satunnaisuutta, valitsee vaihdot suosituksista satunnaisesti.'''
+
     def vaihdaKortit(self) -> list:
+        '''Palauttaa listana vaihdettavat kortit. Valitsee satunnaisesti vaihtosuosituksista.'''
+
         analysoitu = self.kasidata  #Tämä täytetään automaattisesti kun kortit jaetaan
         vaihdettavat = []
         if len(analysoitu["vaihtosuositus"]) > 0:
@@ -99,6 +108,7 @@ class randomAI(AI):
         return vaihdettavat
 
     def pyydaPanostus(self, kierros=2) -> int:  #Random pelaaja tekee valintoja satunnaisesti, mutta kuitenkin noudattaen yksinkertaista logiikkaa painokertoimissa
+        '''Palauttaa panostusvalinnan pohjautuen baseline-painotuksiin ja muokkaaPainotuksia -funktion toimintaan.'''
 
         vaihtoehdot = [1, 2, 3, 4]  # call, pieni korotus, suuri korotus, fold
         painot = PANOSTUS_TN[self.aggressiivisuus].copy()
@@ -118,6 +128,7 @@ class randomAI(AI):
 
 
 class montecarloAI(AI):
+    '''AI-pelaaja, joka käyttää vaihtojen tekemisessä apuna Monte Carlo -menetelmän kaltaista simulointia.'''
 
     def vaihdaKortit(self) -> list:  #Vaihdot päätetään normaalisti jo ennakkoon ensimmäisellä panostuskierroksella
         if self.vaihdetaan is not None:
@@ -127,6 +138,9 @@ class montecarloAI(AI):
 
 
     def haeParasVaihto(self, maara: int = 20) -> list:
+        '''Tekee jokaiselle saadulle vaihtosuositukselle 20 vaihtoyritystä, laskee niistä keskimäärin parhaimman voimaluvun,
+        ja valitsee sen mukaisen vaihdon.'''
+
         analysoitu = self.kasidata
         if self.asetukset is not None:
             maara = self.asetukset.get("MC_maara", 20)  # Vertailuvaihtoja otetaan 20kpl ellei AI-asetuksissa muuta määritetä.
@@ -156,6 +170,9 @@ class montecarloAI(AI):
 
 
     def testaaVaihto(self, kasikortit: list, vaihto: list, maara: int) -> float:
+        '''Käy yksittäisen vaihdon kohdalla 20 (tai maara) yritystä läpi, laskee vaihtojen seurauksena saatujen käsien
+        voimalukujen keskiarvon, ja palauttaa sen float:na.'''
+
         testiPakka = Pakka()
         testiPakka.luo_pakka()
         testiPakka.kortit = [k for k in testiPakka.kortit if k not in kasikortit]  # Pakka jossa on kaikki muut paitsi omat käsikortit
@@ -181,7 +198,14 @@ class montecarloAI(AI):
         
         return summattuVoima / maara
 
-    def pyydaPanostus(self, kierros=2) -> int:  #ainakin montecarlo ja superai haluaa tiedon onko 1. vai 2. vaihtokierros, käsi simulaatio valmiiks
+    def pyydaPanostus(self, kierros=2) -> int:  
+        '''Palauttaa AI:n panostusvalinnan. Jos kierros on ennen vaihtoja, käyttää hyödyksi arvioitua käden voimakkuutta,
+        joka on laskettu 20 vaihtoyrityksen pohjalta. Valintojen todennäköisyyspainoja muokataan suhdeluvulla, joka
+        lasketaan vertailemalla oman käden voimakkuutta keskimäärin voittoon tarvittavaan voimakkuutteen. Lisäksi painotuksia
+        muokataan muokkaaPainotuksia -funktion avulla.
+        Asetuksista riippuen lopullinen valinta on joko vaihtoehtojen välillä painotuksien mukaan satunnaisesti valittu,
+        tai deterministisessä moodissa suurimman painon valinta.'''
+
         if kierros == 1:
             self.vaihdetaan = self.haeParasVaihto()  # Tämä päivittää myös self.arvioituVoimakkuus
             vertailuVoima = self.arvioituVoimakkuus
@@ -234,6 +258,9 @@ class montecarloAI(AI):
 
 
 class steadycarloAI(AI):  #Ei käytössä toistaiseksi.. Ei eronnut tarpeeksi toisesta
+    '''Ei käytössä toistaiseksi, mutta säilytetään. Tarkoituksena oli tehdä Monte Carlo pelaajaa vastaava
+    pelaajamalli sillä erotuksella, että ensimmäinen pyrki hakemaan kättä, jolla saavuttaa kovimman voimaluvun,
+    ja tämä taas hakisi kättä, joka keskimäärin useimmin riittää voittoon. Erot olivat kuitenkin testeissä liian pieniä.'''
 
     def vaihdaKortit(self, maara: int = 100) -> list:
         analysoitu = self.kasidata
@@ -294,6 +321,10 @@ class steadycarloAI(AI):  #Ei käytössä toistaiseksi.. Ei eronnut tarpeeksi to
 #Panostus 75-85
 #Muuten ton voisi laittaa PyydaPanostus alle?? Voisi koodata että nimi OPPIJA niin sillon menee koulutukseen?
 class superAI(AI):
+    '''Koneopetetun AI:n pelaajaluokka. Hyödyntää vaihdoissa Monte Carlon tapaan suosituksia, mutta panostusvalinnat
+    tehdään vahvistusoppimisen keinoin opitulla tilannekuvalla. Käyttää Q-learning algoritmia, palkintona chippien muutos,
+    ja palkinto jaetaan 0.8 kertoimella levittäen kaikille jaon aikana tapahtuneille päätöksille.'''
+
     def __init__(self, pelaaja, asetukset=None):  
         super().__init__(pelaaja, asetukset)
 
@@ -320,6 +351,8 @@ class superAI(AI):
         return self.q_table[state]
 
     def choose_action(self, state):
+        '''Tekee panostusvalinnan perustuen opittuun Q-tableen ja parametrina saatuun pelitilanteeseen.'''
+
         q_values = self.get_q_values(state)
 
         if random() < self.epsilon:
@@ -332,12 +365,15 @@ class superAI(AI):
         return self.tarkistaLaillisuus(valinta)
 
     def update(self, state, action, reward):
+        '''Päivittää Q-arvoa pelitilanteelle ja valinnalle algoritmin mukaan.'''
+
         q_values = self.get_q_values(state)
         current_q = q_values[action - 1]
 
         q_values[action - 1] += self.learning_rate * (reward - current_q)
 
     def tallenna(self, tiedosto=None):
+        '''Tallentaa pickle-tiedostoon nykyisen Q-tablen arvot ja koulutukseen käytetyt parametrit.'''
         if tiedosto is None:
             tiedosto = self.malli
 
@@ -356,6 +392,8 @@ class superAI(AI):
             pickle.dump(data, tiedosto_obj)
 
     def lataa(self, tiedosto="ai_data.pkl"):
+        '''Lataa tiedostosta Q-tablen ja koulutukseen käytetyt parametrit.'''
+
         if not os.path.exists(tiedosto):
             return
 
@@ -375,34 +413,46 @@ class superAI(AI):
 
 
     def tarkistaLaillisuus(self, valinta):
+        '''Tarkistaa valitun toiminnan laillisuuden, ja tarvittaessa muokkaa sitä. Tällä hetkellä AI
+        voi siis tehdä esim. pienen korotuksen valinnan vaikka suuri korotus olisi jo tehty, ja silloin
+        funktio muokkaa sen lähimpään sopivaan valintaan,.'''
+
         maksettavaa = self.pelaaja.nakyma.suurinKorotus - self.pelaaja.nakyma.maksettuPanostukseen
         pieniKorotus = min(self.pelaaja.nakyma.panos, self.pelaaja.nakyma.chips - maksettavaa)
         suuriKorotus = min(3 * self.pelaaja.nakyma.panos, self.pelaaja.nakyma.chips - maksettavaa)
 
-        if valinta == 4:
+        suuriKorotusTehty = any(p.valinta == 3 for p in self.pelaaja.nakyma.muutPelaajat)
+        pieniSallittu = pieniKorotus > 0 and not suuriKorotusTehty
+        suuriSallittu = suuriKorotus > 0 and suuriKorotus > pieniKorotus
+
+        if valinta == 4:  #Ei voi foldata jos ei ole mitään maksettavaa
             return 1 if maksettavaa == 0 else 4
 
         elif valinta == 3:
-            if not (suuriKorotus > 0 and suuriKorotus > pieniKorotus):  #jos suuri korotus ei mahdollinen
-                if not ((pieniKorotus > 0 and not any(p.valinta == 3 for p in self.pelaaja.nakyma.muutPelaajat))):  #jos pieni korotus ei mahdollinen
-                    return 1  #call
-                else:
-                    return 2
-            else:
+
+            if suuriSallittu:
                 return 3
 
+            else:  # Jos suuri korotus ei ole sallittu, mutta pieni on, palautetaan pieni korotus. Muuten call.
+                if pieniSallittu:
+                    return 2
+                else:
+                    return 1
+
         elif valinta == 2:
-            if not ((pieniKorotus > 0 and not any(p.valinta == 3 for p in self.pelaaja.nakyma.muutPelaajat))):  #jos pieni korotus ei mahdollinen
-                return 1
-            else:
+
+            if pieniSallittu:
                 return 2
 
-        else: 
+            else:  # Jos pieni korotus ei ole sallittu, mutta suuri on, palautetaan suuri korotus. Muuten call.
+                if suuriSallittu:
+                    return 3
+                else:
+                    return 1
+
+        else:  #Call onnistuu aina
             return valinta
         
-
-
-
 
     def vaihdaKortit(self) -> list:  #Vaihdot päätetään normaalisti jo ennakkoon ensimmäisellä panostuskierroksella
         if self.vaihdetaan is not None:
@@ -412,6 +462,9 @@ class superAI(AI):
 
 
     def haeParasVaihto(self, maara: int = 20) -> list:
+        '''Tekee jokaiselle saadulle vaihtosuositukselle 20 vaihtoyritystä, laskee niistä keskimäärin parhaimman voimaluvun,
+        ja valitsee sen mukaisen vaihdon.'''
+
         analysoitu = self.kasidata
         if self.asetukset is not None:
             maara = self.asetukset.get("MC_maara", 20)  # Vertailuvaihtoja otetaan 20kpl ellei AI-asetuksissa muuta määritetä.
@@ -441,6 +494,9 @@ class superAI(AI):
 
 
     def testaaVaihto(self, kasikortit: list, vaihto: list, maara: int) -> float:
+        '''Käy yksittäisen vaihdon kohdalla 20 (tai maara) yritystä läpi, laskee vaihtojen seurauksena saatujen käsien
+        voimalukujen keskiarvon, ja palauttaa sen float:na.'''
+
         testiPakka = Pakka()
         testiPakka.luo_pakka()
         testiPakka.kortit = [k for k in testiPakka.kortit if k not in kasikortit]  # Pakka jossa on kaikki muut paitsi omat käsikortit
@@ -467,7 +523,7 @@ class superAI(AI):
 
 
         
-#ao luvut on randomilla, niitä voisi päivittää ja/tai lisätä turvamarginaalia
+#Alla olevat luvut on vanhoilta malleilta, niitä voisi päivittää ja/tai lisätä turvamarginaalia
 PARASHAVIAJANELIO = {  #Simuloinnin keskiarvorajat, minkä yli voimaluvun pitäisi olla, että voittaa käden eri pelaajamäärillä
     2: 8,
     3: 16,

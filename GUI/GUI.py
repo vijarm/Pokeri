@@ -27,6 +27,8 @@ large_font = settings.large_font
 title_font = settings.title_font
 
 class GUI:
+    '''Graafisen käyttöliittymän (GUI) pääluokka.'''
+
     def __init__(self, pelaaja, transport):
         pygame.init()
         self.transport = transport
@@ -47,6 +49,7 @@ class GUI:
         self.clock = pygame.time.Clock()
 
     def process_events(self):
+        '''process_events rekisteröi graafisen käyttöliittymän tapahtumat, kuten hiiren klikkaukset, ja välittää ne jatkokäsittelyyn'''
 
         for event in pygame.event.get():
 
@@ -62,6 +65,7 @@ class GUI:
 
 
     def draw(self):
+        '''Välittää draw-käskyn käsittelyyn käynnissä olevan tilan mukaan.'''
 
         if self.mode == "valikko":
             self.GUI_valikko.draw()
@@ -71,7 +75,8 @@ class GUI:
 
         pygame.display.flip()
 
-    def paivita(self, dt):  #Hakee enginen tuottamat pelitilannemuutokset ja uudet pelinäkymät
+    def paivita(self, dt): 
+        '''Hakee engineltä tulleet päivitykset transport-oliolta, lisää ne päivitysjonoon, ja käsittelee jonossa olevia päivityksiä.'''
 
         paivitykset = self.transport.receive_for_gui()
 
@@ -80,6 +85,7 @@ class GUI:
 
         self.paivitysjono.extend(paivitykset)
 
+        #Disconnectit ja tilan muutokset käsitellään välittömästi jonon ohi
         for paivitys in self.paivitysjono:
             if paivitys.tyyppi == "vaihda_gui_mode":
                 self.mode = paivitys.tiedot["uusi_mode"]
@@ -96,7 +102,10 @@ class GUI:
                 self.GUI_pelipoyta.resetoi()
                 self.GUI_valikko.handle_paivitys(paivitys)
 
-        if self.paivitysjono and not self.GUI_pelipoyta.animaatiot:  #Jonossa tehtäviä ja animaatio ei käynnissä, otetaan uusi
+        #Pelin ollessa käynnissä jonosta otetaan käsittelyyn uusi päivitys vasta, kun vanha on käsitelty loppuun myös mahdollisen animaation osalta.
+        #Näin ihmispelaajan näkymä päivittyy sopivalla tahdilla, vaikka engine voi tehdä nopeasti useita päivityksiä.
+
+        if self.paivitysjono and not self.GUI_pelipoyta.animaatiot:  
             self.uusinPaivitys = self.paivitysjono.pop(0)
             #print("OTETTIIN KÄSITTELYYN:", self.uusinPaivitys.tyyppi)
 
@@ -137,21 +146,24 @@ class GUI:
 
             
     def lisaaKomento(self, tapahtuma, pelaaja, tiedot={}, oma_engine=False):
+        '''Lähettää uuden komennon GUI:lta enginelle'''
+
         komento = Komento(tapahtuma, pelaaja, tiedot)
 
         if tapahtuma == "poistu_pelipoydasta" or tapahtuma == "peli_ohi": #Tapahtuu välittömästi käymättä enginen kautta
             self.mode = "valikko"
 
+        #Käytetään jos client-pelaajan täytyy saada viesti suoraan omalle enginelle, esim pelin keskeyttäminen.
         if oma_engine:
             self.transport.send_to_own_engine(komento)
 
+        #Normaali komentojen lähetystapa
         else: 
-            self.transport.send_to_engine(komento)  #Normaalisti käytetään tätä, mutta parissa kohtaa clientin täytyy ohittaa
-
-    
+            self.transport.send_to_engine(komento) 
 
 
     def asetaNakyma(self, uusinakyma):
+        '''Asettaa uusimman Pelaajanakyma:n voimaan GUI:lle'''
         self.nakyma = uusinakyma
         self.GUI_pelipoyta.asetaNakyma(uusinakyma)
 
