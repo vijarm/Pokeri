@@ -411,6 +411,12 @@ class superAI(AI):
         print("Epsilon:", self.epsilon)
         print("Q-table rivejä:", len(self.q_table))
 
+        '''Latauksen yhteydessä jos haluaa tulostaa random esimerkin Q-arvosta:
+        key = choice(list(self.q_table.keys()))
+        print("Tila:", key)
+        print("Q-arvot:", self.q_table[key])
+        '''
+
 
     def tarkistaLaillisuus(self, valinta):
         '''Tarkistaa valitun toiminnan laillisuuden, ja tarvittaessa muokkaa sitä. Tällä hetkellä AI

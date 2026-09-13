@@ -707,9 +707,9 @@ class Muokkaus_popup:
 
             tiedot = {"nimi": nimi, 
                 "tyyppi": self.tyyppi, 
-                "ai": self.ai_valinta.get(), 
-                "ai_aggressiivisuus": AGGR_VAIHTOEHDOT[self.aggr_valinta.get()], 
-                "ai_strategia": self.strategia_valinta.get(),
+                "ai": None if self.tyyppi == "host" else self.ai_valinta.get(), 
+                "ai_aggressiivisuus": None if self.tyyppi == "host" else AGGR_VAIHTOEHDOT[self.aggr_valinta.get()], 
+                "ai_strategia": None if self.tyyppi == "host" else self.strategia_valinta.get(),
                 "indeksi": self.indeksi}
 
             if self.muokattava == None:

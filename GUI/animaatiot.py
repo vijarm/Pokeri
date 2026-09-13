@@ -160,7 +160,7 @@ class PelaajaIlmoitus:
 
         puhekupla = pygame.Surface((210, 110), pygame.SRCALPHA)
         pygame.draw.ellipse(puhekupla, WHITE, (0, 0, 210, 90))  #pohja
-        pygame.draw.polygon(puhekupla, (255, 255, 255), PUHEKUPLAT[self.pelaaja][1] )  #väkänen
+        pygame.draw.polygon(puhekupla, WHITE, PUHEKUPLAT[self.pelaaja][1] )  #väkänen
         self.pelipoytaGUI.screen.blit(puhekupla, PUHEKUPLAT[self.pelaaja][0])
         
         draw_centered_text(self.pelipoytaGUI.screen, self.ilmoitus, PUHEKUPLAT[self.pelaaja][2], large_font, BLACK)
