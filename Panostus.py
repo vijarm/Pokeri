@@ -31,11 +31,7 @@ class PanostusKierros:
         if self.valmis:
             return
 
-        if self.vuoro == 1 and sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen
-            self.lopetaKierros()  #Jos max 1 pelaaja olisi panostamassa, panostuskierrosta ei tarvita. 
-            return  
-
-        if self.fold_voitto:
+        if self.fold_voitto:  
             if self.pelipoyta.simulointi is None:
                 if self.pelipoyta.ok is False:
                     return
@@ -45,6 +41,10 @@ class PanostusKierros:
             self.odottaaValintaa = False
             self.pelipoyta.ok = False
             return
+
+        if self.vuoro == 1 and sum(not p.allin for p in self.jako.mukanaPotissa) <= 1:  #All-in ei osallistu panostukseen
+            self.lopetaKierros()  #Jos max 1 pelaaja olisi panostamassa, panostuskierrosta ei tarvita. 
+            return  
 
         if self.odottaaValintaa:
             if self.panostusValinta is None:
